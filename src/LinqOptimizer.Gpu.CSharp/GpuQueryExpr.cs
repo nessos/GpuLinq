@@ -4,11 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
-using LinqOptimizer.Base;
-using LinqOptimizer.Core;
-using LinqOptimizer.Gpu;
+using Nessos.LinqOptimizer.Core;
+using Nessos.GpuLinq.Core;
+using Nessos.GpuLinq.Base;
 
-namespace LinqOptimizer.Gpu.CSharp
+namespace Nessos.GpuLinq.CSharp
 {
     /// <summary>
     /// Provides a set of static methods for querying objects that implement IGpuQueryExpr.

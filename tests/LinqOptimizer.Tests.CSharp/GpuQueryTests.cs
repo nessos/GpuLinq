@@ -3,13 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using LinqOptimizer.Gpu;
-using LinqOptimizer.Gpu.CSharp;
+using Nessos.GpuLinq;
+using Nessos.GpuLinq.CSharp;
 using FsCheck.Fluent;
 using System.Threading;
 using System.Runtime.InteropServices;
+using Nessos.GpuLinq.Core;
 
-namespace LinqOptimizer.Tests
+namespace Nessos.GpuLinq.Tests.CSharp
 {
     [TestFixture]
     class GpuQueryTests

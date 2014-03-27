@@ -1,11 +1,11 @@
-﻿namespace LinqOptimizer.Gpu
+﻿namespace Nessos.GpuLinq.Core
     open System
     open System.Linq
     open System.Linq.Expressions
     open System.Runtime.InteropServices
-    open LinqOptimizer.Core
     open OpenCL.Net
-    open LinqOptimizer.Core.Utils
+    open Nessos.LinqOptimizer.Core
+    open Nessos.LinqOptimizer.Core.Utils
 
     module internal Compiler =
         type Length = int

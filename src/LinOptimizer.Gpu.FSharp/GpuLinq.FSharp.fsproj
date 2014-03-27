@@ -8,9 +8,9 @@
     <ProjectGuid>2905e8cc-35c4-426e-91c9-0d0a062ad1a3</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>LinOptimizer.Gpu.FSharp</RootNamespace>
-    <AssemblyName>LinOptimizer.Gpu.FSharp</AssemblyName>
+    <AssemblyName>GpuLinq.FSharp</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <Name>LinOptimizer.Gpu.FSharp</Name>
+    <Name>GpuLinq.FSharp</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -32,6 +32,14 @@
     <DocumentationFile>bin\Release\LinOptimizer.Gpu.FSharp.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="LinqOptimizer.Base">
+      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.5.2.1\lib\LinqOptimizer.Base.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="LinqOptimizer.CSharp">
+      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.5.2.1\lib\LinqOptimizer.CSharp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
@@ -41,11 +49,14 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LinqOptimizer.Gpu\LinqOptimizer.Gpu.fsproj">
-      <Name>LinqOptimizer.Gpu</Name>
+    <ProjectReference Include="..\LinqOptimizer.Gpu\GpuLinq.Core.fsproj">
+      <Name>GpuLinq.Core</Name>
       <Project>{edf3ce5f-18a2-443e-85e7-d3d877233aed}</Project>
       <Private>True</Private>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

@@ -7,15 +7,14 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LinqOptimizer.CSharp;
-using LinqOptimizer.Gpu.CSharp;
-using LinqOptimizer.Base;
+using Nessos.GpuLinq;
+using Nessos.GpuLinq.CSharp;
 using System.Runtime.InteropServices;
 using System.IO.MemoryMappedFiles;
 using System.IO;
-using LinqOptimizer.Gpu;
+using Nessos.GpuLinq.Core;
 
-namespace LinqOptimizer.Tests
+namespace Nessos.GpuLinq.Tests.CSharp
 {
 
 

@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using LinqOptimizer.Core;
+using Nessos.LinqOptimizer.Core;
 
-namespace LinqOptimizer.Base
+namespace Nessos.GpuLinq.Base
 {
     /// <summary>
     /// This interface represents an gpu query.

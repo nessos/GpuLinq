@@ -1,4 +1,4 @@
-﻿namespace LinqOptimizer.Gpu
+﻿namespace Nessos.GpuLinq.Core
     open System
     open OpenCL.Net.Extensions
     open OpenCL.Net

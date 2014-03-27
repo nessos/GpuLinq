@@ -1,11 +1,11 @@
-﻿namespace LinqOptimizer.Gpu
+﻿namespace Nessos.GpuLinq.Core
     open System
     open System.Linq
     open System.Collections.Generic
     open System.Collections.Concurrent
     open System.Runtime.InteropServices
-    open LinqOptimizer.Core
-    open LinqOptimizer.Base
+    open Nessos.LinqOptimizer.Core
+    open Nessos.GpuLinq.Base
     open OpenCL.Net.Extensions
     open OpenCL.Net
 

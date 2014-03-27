@@ -1,4 +1,4 @@
-﻿namespace LinqOptimizer.Gpu
+﻿namespace Nessos.GpuLinq.Core
 
     module KernelTemplates = 
 

@@ -7,8 +7,8 @@
     <ProjectGuid>{1E812A89-C8F1-463E-8E1E-765389A0A4BC}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>LinqOptimizer.Tests</RootNamespace>
-    <AssemblyName>LinqOptimizer.Tests</AssemblyName>
+    <RootNamespace>GpuLinq.Tests.Tests</RootNamespace>
+    <AssemblyName>GpuLinq.Tests.CSharp</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -30,11 +30,11 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>LinqOptimizer.Tests.Program</StartupObject>
+    <StartupObject>Nessos.GpuLinq.Tests.CSharp.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FsCheck">
-      <HintPath>..\packages\FsCheck.0.9.1.0\lib\net40-Client\FsCheck.dll</HintPath>
+      <HintPath>..\..\packages\FsCheck.0.9.2.0\lib\net40-Client\FsCheck.dll</HintPath>
     </Reference>
     <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <Private>True</Private>
@@ -53,41 +53,27 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GpuQueryTests.cs" />
-    <Compile Include="ParallelQueryTests.cs" />
-    <Compile Include="QueryTests.cs" />
     <Compile Include="Program.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LinqOptimizer.Base\LinqOptimizer.Base.csproj">
-      <Project>{f21f83a3-bdbd-4965-87d6-94e65a069a7b}</Project>
-      <Name>LinqOptimizer.Base</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\LinqOptimizer.Core\LinqOptimizer.Core.fsproj">
-      <Project>{6fea9d47-1291-40ce-9716-619bcc2f485a}</Project>
-      <Name>LinqOptimizer.Core</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\LinqOptimizer.CSharp\LinqOptimizer.CSharp.csproj">
-      <Project>{e606c2c2-c219-4e51-b928-5b192e283a54}</Project>
-      <Name>LinqOptimizer.CSharp</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\LinqOptimizer.Gpu.CSharp\LinqOptimizer.Gpu.CSharp.csproj">
-      <Project>{36a2a39a-d980-46c3-a5e1-cb680763786b}</Project>
-      <Name>LinqOptimizer.Gpu.CSharp</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\LinqOptimizer.Gpu\LinqOptimizer.Gpu.fsproj">
-      <Project>{edf3ce5f-18a2-443e-85e7-d3d877233aed}</Project>
-      <Name>LinqOptimizer.Gpu</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\LinqOptimizer.Tests.FSharp\LinqOptimizer.Tests.FSharp.fsproj">
-      <Project>{38a228d2-764c-4103-9ac2-58452630cba2}</Project>
-      <Name>LinqOptimizer.Tests.FSharp</Name>
-    </ProjectReference>
+    <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Properties\" />
+    <ProjectReference Include="..\..\src\LinqOptimizer.Base\GpuLinq.Base.csproj">
+      <Project>{f21f83a3-bdbd-4965-87d6-94e65a069a7b}</Project>
+      <Name>GpuLinq.Base</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\LinqOptimizer.Gpu.CSharp\GpuLinq.CSharp.csproj">
+      <Project>{36a2a39a-d980-46c3-a5e1-cb680763786b}</Project>
+      <Name>GpuLinq.CSharp</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\LinqOptimizer.Gpu\GpuLinq.Core.fsproj">
+      <Project>{edf3ce5f-18a2-443e-85e7-d3d877233aed}</Project>
+      <Name>GpuLinq.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
