@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3B4FB6A4-37CE-47FE-AA59-C733905CD3D5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B0B3D341-95D1-42B3-A204-4DED1DE755A0}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "GpuLinq.FSharp", "src\LinOptimizer.Gpu.FSharp\GpuLinq.FSharp.fsproj", "{2905E8CC-35C4-426E-91C9-0D0A062AD1A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GpuLinq.Base", "src\LinqOptimizer.Base\GpuLinq.Base.csproj", "{F21F83A3-BDBD-4965-87D6-94E65A069A7B}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "GpuLinq.Core", "src\LinqOptimizer.Gpu\GpuLinq.Core.fsproj", "{EDF3CE5F-18A2-443E-85E7-D3D877233AED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GpuLinq.CSharp", "src\LinqOptimizer.Gpu.CSharp\GpuLinq.CSharp.csproj", "{36A2A39A-D980-46C3-A5E1-CB680763786B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GpuLinq.Tests.CSharp", "tests\LinqOptimizer.Tests.CSharp\GpuLinq.Tests.CSharp.csproj", "{1E812A89-C8F1-463E-8E1E-765389A0A4BC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2905E8CC-35C4-426E-91C9-0D0A062AD1A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2905E8CC-35C4-426E-91C9-0D0A062AD1A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2905E8CC-35C4-426E-91C9-0D0A062AD1A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2905E8CC-35C4-426E-91C9-0D0A062AD1A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F21F83A3-BDBD-4965-87D6-94E65A069A7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F21F83A3-BDBD-4965-87D6-94E65A069A7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F21F83A3-BDBD-4965-87D6-94E65A069A7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F21F83A3-BDBD-4965-87D6-94E65A069A7B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EDF3CE5F-18A2-443E-85E7-D3D877233AED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDF3CE5F-18A2-443E-85E7-D3D877233AED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDF3CE5F-18A2-443E-85E7-D3D877233AED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDF3CE5F-18A2-443E-85E7-D3D877233AED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36A2A39A-D980-46C3-A5E1-CB680763786B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36A2A39A-D980-46C3-A5E1-CB680763786B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36A2A39A-D980-46C3-A5E1-CB680763786B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36A2A39A-D980-46C3-A5E1-CB680763786B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E812A89-C8F1-463E-8E1E-765389A0A4BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E812A89-C8F1-463E-8E1E-765389A0A4BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E812A89-C8F1-463E-8E1E-765389A0A4BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E812A89-C8F1-463E-8E1E-765389A0A4BC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{2905E8CC-35C4-426E-91C9-0D0A062AD1A3} = {3B4FB6A4-37CE-47FE-AA59-C733905CD3D5}
+		{F21F83A3-BDBD-4965-87D6-94E65A069A7B} = {3B4FB6A4-37CE-47FE-AA59-C733905CD3D5}
+		{EDF3CE5F-18A2-443E-85E7-D3D877233AED} = {3B4FB6A4-37CE-47FE-AA59-C733905CD3D5}
+		{36A2A39A-D980-46C3-A5E1-CB680763786B} = {3B4FB6A4-37CE-47FE-AA59-C733905CD3D5}
+		{1E812A89-C8F1-463E-8E1E-765389A0A4BC} = {B0B3D341-95D1-42B3-A204-4DED1DE755A0}
+	EndGlobalSection
+EndGlobal
