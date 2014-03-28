@@ -31,7 +31,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         {
             
 
-            var xs = Enumerable.Range(1, 10).Select(x => x - 1).ToArray();
+            var xs = Enumerable.Range(1, 10).Select(x => x).ToArray();
             using (var context = new GpuContext())
             {
 
@@ -45,8 +45,8 @@ namespace Nessos.GpuLinq.Tests.CSharp
                     context.Run(query);
                 }
             }
-            
-            //(new GpuQueryTests()).FFT();
+
+            //(new GpuQueryTests()).ConstantLifting();
         }
 
         static void Measure(Action action)

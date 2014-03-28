@@ -9,6 +9,7 @@ using FsCheck.Fluent;
 using System.Threading;
 using System.Runtime.InteropServices;
 using Nessos.GpuLinq.Core;
+using System.Linq.Expressions;
 
 namespace Nessos.GpuLinq.Tests.CSharp
 {
@@ -443,6 +444,34 @@ namespace Nessos.GpuLinq.Tests.CSharp
                             var y = xs.Select(n => n * 2).ToArray();
                             return _out.ToArray().SequenceEqual(y);
                         }
+                    }
+                }).QuickCheckThrowOnFailure();
+            }
+        }
+
+
+        [Test]
+        public void FunctionSplicing()
+        {
+            using (var context = new GpuContext())
+            {
+                Spec.ForAny<int[]>(xs =>
+                {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
+                        Expression<Func<int, int>> g = x => x + 1;
+                        Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
+                        var query = (from x in _xs.AsGpuQueryExpr()
+                                     select f.Invoke(x)).ToArray();
+
+                        var gpuResult = context.Run(query);
+
+                        Func<int, int> _g = x => x + 1;
+                        Func<int, int> _f = x => 2 * _g.Invoke(x);
+                        var cpuResult = (from x in xs
+                                         select _f.Invoke(x)).ToArray();
+
+                        return gpuResult.SequenceEqual(cpuResult);
                     }
                 }).QuickCheckThrowOnFailure();
             }
