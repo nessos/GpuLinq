@@ -42,11 +42,11 @@ namespace Nessos.GpuLinq.Tests.CSharp
                     var query = (from x in _xs.AsGpuQueryExpr()
                                  select f.Invoke(x)).ToArray();
 
-                    context.Run(query);
+                    var result = context.Run(query);
                 }
             }
 
-            //(new GpuQueryTests()).ConstantLifting();
+            (new GpuQueryTests()).FunctionSplicing();
         }
 
         static void Measure(Action action)

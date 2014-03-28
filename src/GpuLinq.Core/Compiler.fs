@@ -107,7 +107,7 @@
                     // Expr Call
                     | MethodCall (objExpr, methodInfo, [Parameter funcExpr; argExpr]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
                                                                                  methodInfo.Name = "Invoke" ->
-                        sprintf' "%s(%s)" (varExprToStr funcExpr vars) (exprToStr argExpr vars)
+                        sprintf' "%s(%s)" funcExpr.Name (exprToStr argExpr vars)
                     | ValueTypeMemberInit (members, bindings) ->
                         let bindingsStr = bindings |> Seq.fold (fun bindingsStr binding -> sprintf' ".%s = %s, %s" binding.Member.Name (exprToStr binding.Expression vars) bindingsStr) ""
                         sprintf' "(%s) { %s }" (typeToStr expr.Type) bindingsStr
@@ -134,24 +134,29 @@
                     | Nop _ -> ""
                     | _ -> failwithf "Not supported %A" expr
 
-                let collectFuncsStr (paramExprs : ParameterExpression[], values : obj[]) = 
-                    let foo = 
+                let rec collectFuncsStr (paramExprs : ParameterExpression[], values : obj[]) = 
+                    let funcsStr = 
                         (paramExprs, values) 
                         ||> Array.zip 
                         |> Array.map (fun (paramExpr, value) -> 
                                         match value with
                                         | :? Expression as expr -> 
                                             match expr with
-                                            | Lambda (varExpr, bodyExpr) -> 
+                                            | Lambda ([varExpr], bodyExpr) -> 
                                                 let expr, paramExprs, objs = ConstantLiftingTransformer.apply bodyExpr
-                                                let exprStr = exprToStr expr varExpr
-                                                ""
+                                                let exprStr = exprToStr expr [varExpr]
+                                                let funcStr = sprintf' "inline %s(%s %s) { return %s; }%s %s" 
+                                                                paramExpr.Name (typeToStr varExpr.Type) (varExprToStr varExpr [varExpr]) exprStr Environment.NewLine
+                                                                (collectFuncsStr (paramExprs, objs))
+                                                funcStr
                                             | _ -> "" 
                                         | _ -> "")
-                    ()
+                        |> String.concat Environment.NewLine
+                    funcsStr
                 let headerStr (exprs : Expression[], paramExprs : ParameterExpression[], values : obj[]) = 
                     let funcsStr = collectFuncsStr (paramExprs, values)
-                    sprintf' "%s%s%s" KernelTemplates.openCLExtensions Environment.NewLine (structsDefinitionStr exprs)
+                    let structsStr = structsDefinitionStr exprs
+                    [KernelTemplates.openCLExtensions; funcsStr; structsStr] |> String.concat Environment.NewLine
 
                 let bodyStr (exprs : seq<Expression>) (vars : seq<ParameterExpression>) =
                     let exprsStr = exprs
@@ -163,7 +168,13 @@
                                       |> Seq.map (fun varExpr -> sprintf' "%s %s;" (typeToStr varExpr.Type) (varExprToStr varExpr vars)) 
                                       |> Seq.fold (fun first second -> sprintf' "%s%s%s" first Environment.NewLine second) "" 
                     (exprsStr, varsStr)
-                
+
+                let collectValueArgs (paramExprs : ParameterExpression[], values : obj[]) = 
+                    (paramExprs, values) 
+                    ||> Array.zip 
+                    |> Array.filter (fun (paramExpr, _) -> not (typeof<Expression>.IsAssignableFrom(paramExpr.Type)))
+                    |> Array.map (fun (paramExpr, value) -> (value, paramExpr.Type))
+
                 match queryExpr with
                 | Source (Constant (value, Named (TypeCheck gpuArrayTypeDef _, [|_|])) as expr, sourceType, QueryExprType.Gpu) ->
                     let sourceTypeStr = typeToStr sourceType
@@ -173,7 +184,7 @@
                     let exprs, paramExprs, values = constantLifting context.Exprs
                     let vars = Seq.append paramExprs context.VarExprs
                     let headerStr = headerStr (exprs, paramExprs, values)
-                    let valueArgs = (paramExprs, values) ||> Array.zip |> Array.map (fun (paramExpr, value) -> (value, paramExpr.Type)) 
+                    let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
                     match context.ReductionType with
@@ -198,7 +209,7 @@
                     let exprs, paramExprs, values = constantLifting context.Exprs
                     let vars = Seq.append paramExprs vars
                     let headerStr = headerStr (exprs, paramExprs, values)
-                    let valueArgs = (paramExprs, values) ||> Array.zip |> Array.map (fun (paramExpr, value) -> (value, paramExpr.Type)) 
+                    let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
                     match context.ReductionType with

@@ -32,14 +32,6 @@
     <DocumentationFile>bin\Release\LinOptimizer.Gpu.FSharp.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="LinqOptimizer.Base">
-      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.5.2.1\lib\LinqOptimizer.Base.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="LinqOptimizer.CSharp">
-      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.5.2.1\lib\LinqOptimizer.CSharp.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
@@ -47,9 +39,6 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GpuLinq.Base\GpuLinq.Base.csproj">

@@ -32,17 +32,6 @@
     <DocumentationFile>bin\Release\GpuLinq.Base.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="LinqOptimizer.Base, Version=0.5.2.29915, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.5.2.1\lib\LinqOptimizer.Base.dll</HintPath>
-    </Reference>
-    <Reference Include="LinqOptimizer.Core, Version=0.5.2.30935, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.5.2.1\lib\LinqOptimizer.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="LinqOptimizer.CSharp">
-      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.5.2.1\lib\LinqOptimizer.CSharp.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -56,7 +45,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
+    <ProjectReference Include="..\..\..\LinqOptimizer\src\LinqOptimizer.Core\LinqOptimizer.Core.fsproj">
+      <Project>{6fea9d47-1291-40ce-9716-619bcc2f485a}</Project>
+      <Name>LinqOptimizer.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
