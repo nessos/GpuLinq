@@ -343,7 +343,9 @@ namespace Nessos.GpuLinq.Tests.CSharp
                                                      let sq = Math.Sqrt(n * n)
                                                      let ex = Math.Exp(pi)
                                                      let p = Math.Pow(pi, 2)
-                                                     select f * pi * c * s * sq * ex * p).ToArray());
+                                                     let a = Math.Abs((double)c)
+                                                     let l = Math.Log(n)
+                                                     select f * pi * c * s * sq * ex * p * a * l).ToArray());
 
                         var cpuResult = (from n in xs
                                          let pi = Math.PI
@@ -353,9 +355,11 @@ namespace Nessos.GpuLinq.Tests.CSharp
                                          let sq = Math.Sqrt(n * n)
                                          let ex = Math.Exp(pi)
                                          let p = Math.Pow(pi, 2)
-                                         select f * pi * c * s * sq * ex * p).ToArray();
+                                         let a = Math.Abs((double)c)
+                                         let l = Math.Log(n)
+                                         select f * pi * c * s * sq * ex * p * a * l).ToArray();
 
-                        return gpuResult.Zip(cpuResult, (x, y) => System.Math.Abs(x - y) < 0.001f)
+                        return gpuResult.Zip(cpuResult, (x, y) => (Double.IsNaN(x) && Double.IsNaN(y)) ? true : System.Math.Abs(x - y) < 0.001f)
                                         .SequenceEqual(Enumerable.Range(1, xs.Length).Select(_ => true));
                     }
                 }).QuickCheckThrowOnFailure();
@@ -470,6 +474,34 @@ namespace Nessos.GpuLinq.Tests.CSharp
                         Func<int, int> _f = x => 2 * _g.Invoke(x);
                         var cpuResult = (from x in xs
                                          select _f.Invoke(x)).ToArray();
+
+                        return gpuResult.SequenceEqual(cpuResult);
+                    }
+                }).QuickCheckThrowOnFailure();
+            }
+        }
+
+
+        [Test]
+        public void TernaryIfElse()
+        {
+            using (var context = new GpuContext())
+            {
+                Spec.ForAny<int[]>(xs =>
+                {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
+
+                        var query = (from n in _xs.AsGpuQueryExpr()
+                                     where n > 10
+                                     select (n % 2 == 0) ? 1 : 0).ToArray();
+
+                        var gpuResult = context.Run(query);
+
+
+                        var cpuResult = (from n in xs
+                                         where n > 10
+                                         select (n % 2 == 0) ? 1 : 0).ToArray();
 
                         return gpuResult.SequenceEqual(cpuResult);
                     }

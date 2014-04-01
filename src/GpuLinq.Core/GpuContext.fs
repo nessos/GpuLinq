@@ -49,6 +49,9 @@
             | TypeCheck Compiler.floatType _ ->  
                 let output = output :?> single[]
                 queue.ReadFromBuffer(outputBuffer, output, 0, int64 output.Length)
+            | TypeCheck Compiler.boolType _ ->  
+                let output = output :?> bool[]
+                queue.ReadFromBuffer(outputBuffer, output, 0, int64 output.Length)
             | _ -> failwithf "Not supported result type %A" t
 
         let createDynamicArray (t : Type) (flags : int[]) (output : obj) : Array =
@@ -64,6 +67,13 @@
             | TypeCheck Compiler.floatType _ ->  
                 let output = output :?> float[]
                 let result = new System.Collections.Generic.List<float>(flags.Length)
+                for i = 0 to flags.Length - 1 do
+                    if flags.[i] = 0 then
+                        result.Add(output.[i])
+                result.ToArray() :> _
+            | TypeCheck Compiler.boolType _ ->  
+                let output = output :?> bool[]
+                let result = new System.Collections.Generic.List<bool>(flags.Length)
                 for i = 0 to flags.Length - 1 do
                     if flags.[i] = 0 then
                         result.Add(output.[i])
@@ -215,8 +225,8 @@
                         match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
                         | ErrorCode.Success, event ->
                             use event = event
-                            readFromBuffer env.CommandQueues.[0] queryExpr.Type outputBuffer output 
                             readFromBuffer env.CommandQueues.[0] typeof<int> flagsBuffer flags
+                            readFromBuffer env.CommandQueues.[0] queryExpr.Type outputBuffer output 
                             let result = createDynamicArray queryExpr.Type (flags :?> int[]) output
                             match Cl.CreateBuffer(env.Context, MemFlags.ReadWrite ||| MemFlags.None ||| MemFlags.UseHostPtr, new IntPtr(input.Length * input.Size), result) with
                             | resultBuffer, ErrorCode.Success -> 

@@ -31,22 +31,29 @@ namespace Nessos.GpuLinq.Tests.CSharp
         {
             
 
-            var xs = Enumerable.Range(1, 10).Select(x => x).ToArray();
-            using (var context = new GpuContext())
-            {
+            //var xs = Enumerable.Range(1, 100).Select(x => x).ToArray();
+            //using (var context = new GpuContext())
+            //{
 
-                using (var _xs = context.CreateGpuArray(xs))
-                {
-                    Expression<Func<int, int>> g = x => x + 1;
-                    Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
-                    var query = (from x in _xs.AsGpuQueryExpr()
-                                 select f.Invoke(x)).ToArray();
+            //    using (var _xs = context.CreateGpuArray(xs))
+            //    {
 
-                    var result = context.Run(query);
-                }
-            }
+            //        var query = (from n in _xs.AsGpuQueryExpr()
+            //                     where n > 10
+            //                     select (n % 2 == 0) ? 1 : 0).ToArray();
 
-            (new GpuQueryTests()).FunctionSplicing();
+            //        var gpuResult = context.Run(query);
+
+            //        var cpuResult = 
+            //            (from n in xs
+            //             where n > 10
+            //             select (n % 2 == 0) ? 1 : 0).ToArray();
+
+            //        var result = gpuResult.SequenceEqual(cpuResult);
+            //    }
+            //}
+
+            (new GpuQueryTests()).Count();
         }
 
         static void Measure(Action action)

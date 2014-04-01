@@ -22,6 +22,7 @@
         let floatType = typeof<single>
         let doubleType = typeof<double>
         let byteType = typeof<byte>
+        let boolType = typeof<bool>
         let gpuArrayTypeDef = typedefof<GpuArray<_>>
 
         let breakLabel () = labelTarget "brk"
@@ -38,7 +39,7 @@
                     | TypeCheck byteType _ -> "byte"
                     | Named(typedef, [|elemType|]) when typedef = typedefof<IGpuArray<_>> -> 
                         sprintf' "__global %s*" (typeToStr elemType)
-                    | _ when t.IsValueType -> t.Name                    
+                    | _ when t.IsValueType && not t.IsPrimitive -> t.Name                    
                     | _ -> failwithf "Not supported %A" t
 
                 let varExprToStr (varExpr : ParameterExpression) (vars : seq<ParameterExpression>) = 
@@ -104,6 +105,12 @@
                         sprintf' "exp(%s)" (exprToStr argExpr vars)
                     | MethodCall (objExpr, methodInfo, [firstExpr; secondExpr]) when methodInfo.Name = "Pow" ->
                         sprintf' "powr(%s, %s)" (exprToStr firstExpr vars) (exprToStr secondExpr vars)
+                    | MethodCall (objExpr, methodInfo, [argExpr]) when methodInfo.Name = "Log" ->
+                        sprintf' "log(%s)" (exprToStr argExpr vars)
+                    | MethodCall (objExpr, methodInfo, [argExpr]) when methodInfo.Name = "Abs" && 
+                        (methodInfo.ReturnType = typeof<double> || methodInfo.ReturnType = typeof<Single>) ->
+                        sprintf' "fabs(%s)" (exprToStr argExpr vars)
+
                     // Expr Call
                     | MethodCall (objExpr, methodInfo, [Parameter funcExpr; argExpr]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
                                                                                  methodInfo.Name = "Invoke" ->
@@ -115,6 +122,7 @@
                     | Constant (value, TypeCheck floatType _) -> sprintf' "%A" value
                     | Constant (value, TypeCheck doubleType _) -> sprintf' "%A" value
                     | Constant (value, TypeCheck byteType _) -> sprintf' "%A" value
+                    | Constant (value, TypeCheck boolType _) -> sprintf' "%A" value
                     | Parameter (paramExpr) -> varExprToStr paramExpr vars
                     | Assign (Parameter (paramExpr), expr') -> sprintf' "%s = %s" (varExprToStr paramExpr vars) (exprToStr expr' vars)
                     | Plus (leftExpr, rightExpr) -> sprintf' "(%s + %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
@@ -122,9 +130,18 @@
                     | Times (leftExpr, rightExpr) -> sprintf' "(%s * %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
                     | Divide (leftExpr, rightExpr) -> sprintf' "(%s / %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
                     | Modulo (leftExpr, rightExpr) -> sprintf' "(%s %% %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
+                    | Negate (expr) -> sprintf' "(-%s)" (exprToStr expr vars)
                     | Equal (leftExpr, rightExpr) -> sprintf' "(%s == %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
+                    | NotEqual (leftExpr, rightExpr) -> sprintf' "(%s != %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
+                    | GreaterThan (leftExpr, rightExpr) -> sprintf' "(%s > %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
+                    | GreaterThanOrEqual (leftExpr, rightExpr) -> sprintf' "(%s >= %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
+                    | LessThan (leftExpr, rightExpr) -> sprintf' "(%s < %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
+                    | LessThanOrEqual (leftExpr, rightExpr) -> sprintf' "(%s <= %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
                     | IfThenElse (testExpr, thenExpr, elseExpr) -> 
-                        sprintf' "if (%s) { %s; } else { %s; }" (exprToStr testExpr vars) (exprToStr thenExpr vars) (exprToStr elseExpr vars)
+                        if thenExpr.NodeType = ExpressionType.Block && elseExpr.NodeType = ExpressionType.Block then
+                            sprintf' "if (%s) { %s; } else { %s; }" (exprToStr testExpr vars) (exprToStr thenExpr vars) (exprToStr elseExpr vars)
+                        else
+                            sprintf' "((%s) ? %s : %s)" (exprToStr testExpr vars) (exprToStr thenExpr vars) (exprToStr elseExpr vars)
                     | Goto (kind, target, value) when kind = GotoExpressionKind.Continue -> sprintf' "goto %s" target.Name 
                     | Block (_, exprs, _) -> 
                         exprs
@@ -237,10 +254,10 @@
                 | Filter (Lambda ([paramExpr], bodyExpr), queryExpr') ->
                     match context.ReductionType with
                     | ReductionType.Map | ReductionType.Filter ->
-                        let exprs' = ifThenElse bodyExpr (assign context.FlagVarExpr (constant 0)) (block [] [assign context.FlagVarExpr (constant 1); (``continue`` context.ContinueLabel)]) :: assign context.CurrentVarExpr paramExpr :: context.Exprs
+                        let exprs' = (ifThenElse bodyExpr (block [] [assign context.FlagVarExpr (constant 0)]) (block [] [assign context.FlagVarExpr (constant 1); (``continue`` context.ContinueLabel)])) :: assign context.CurrentVarExpr paramExpr :: context.Exprs
                         compile' queryExpr' { context with CurrentVarExpr = paramExpr; VarExprs = paramExpr :: context.VarExprs; Exprs = exprs'; ReductionType = ReductionType.Filter } 
                     | _ ->
-                        let exprs' = ifThenElse bodyExpr empty (``continue`` context.ContinueLabel) :: assign context.CurrentVarExpr paramExpr :: context.Exprs
+                        let exprs' = (ifThenElse bodyExpr (block [] [empty]) (block [] [``continue`` context.ContinueLabel])) :: assign context.CurrentVarExpr paramExpr :: context.Exprs
                         compile' queryExpr' { context with CurrentVarExpr = paramExpr; VarExprs = paramExpr :: context.VarExprs; Exprs = exprs' } 
                 | _ -> failwithf "Not supported %A" queryExpr 
 
