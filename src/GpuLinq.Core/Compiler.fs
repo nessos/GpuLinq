@@ -162,8 +162,9 @@
                                             | Lambda ([varExpr], bodyExpr) -> 
                                                 let expr, paramExprs, objs = ConstantLiftingTransformer.apply bodyExpr
                                                 let exprStr = exprToStr expr [varExpr]
-                                                let funcStr = sprintf' "inline %s(%s %s) { return %s; }%s %s" 
-                                                                paramExpr.Name (typeToStr varExpr.Type) (varExprToStr varExpr [varExpr]) exprStr Environment.NewLine
+                                                let funcStr = sprintf' "inline %s %s(%s %s) { return %s; }%s %s" 
+                                                                (typeToStr bodyExpr.Type) paramExpr.Name (typeToStr varExpr.Type) 
+                                                                (varExprToStr varExpr [varExpr]) exprStr Environment.NewLine
                                                                 (collectFuncsStr (paramExprs, objs))
                                                 funcStr
                                             | _ -> "" 
