@@ -162,17 +162,17 @@
                                             | Lambda ([varExpr], bodyExpr) -> 
                                                 let expr, paramExprs, objs = ConstantLiftingTransformer.apply bodyExpr
                                                 let exprStr = exprToStr expr [varExpr]
-                                                let funcStr = sprintf' "inline %s %s(%s %s) { return %s; }%s %s" 
+                                                let funcStr = sprintf' "inline %s %s(%s %s) { return %s; }%s " 
                                                                 (typeToStr bodyExpr.Type) paramExpr.Name (typeToStr varExpr.Type) 
                                                                 (varExprToStr varExpr [varExpr]) exprStr Environment.NewLine
-                                                                (collectFuncsStr (paramExprs, objs))
-                                                funcStr
-                                            | _ -> "" 
-                                        | _ -> "")
-                        |> String.concat Environment.NewLine
-                    funcsStr
+                                                                
+                                                Seq.append [funcStr]  (collectFuncsStr (paramExprs, objs))
+                                            | _ -> [""] :> _
+                                        | _ -> [""] :> _)
+                        
+                    funcsStr |> Seq.concat
                 let headerStr (exprs : Expression[], paramExprs : ParameterExpression[], values : obj[]) = 
-                    let funcsStr = collectFuncsStr (paramExprs, values)
+                    let funcsStr = collectFuncsStr (paramExprs, values) |> Seq.distinct |> List.ofSeq |> List.rev |> String.concat Environment.NewLine
                     let structsStr = structsDefinitionStr exprs
                     [KernelTemplates.openCLExtensions; funcsStr; structsStr] |> String.concat Environment.NewLine
 
