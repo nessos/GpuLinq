@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2012 for Web
+# Visual Studio 2012
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3B4FB6A4-37CE-47FE-AA59-C733905CD3D5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B0B3D341-95D1-42B3-A204-4DED1DE755A0}"
@@ -10,6 +10,9 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "GpuLinq.Core", "src\GpuLinq.Core\GpuLinq.Core.fsproj", "{EDF3CE5F-18A2-443E-85E7-D3D877233AED}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GpuLinq.CSharp", "src\GpuLinq.CSharp\GpuLinq.CSharp.csproj", "{36A2A39A-D980-46C3-A5E1-CB680763786B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EDF3CE5F-18A2-443E-85E7-D3D877233AED} = {EDF3CE5F-18A2-443E-85E7-D3D877233AED}
+	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "GpuLinq.FSharp", "src\GpuLinq.FSharp\GpuLinq.FSharp.fsproj", "{2905E8CC-35C4-426E-91C9-0D0A062AD1A3}"
 EndProject
