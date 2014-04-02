@@ -475,9 +475,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
                         Func<int, int> _g = x => x + 1;
                         Func<int, int> _f = x => 2 * _g.Invoke(x);
                         var cpuResult = (from x in xs
-                                         let y = _g.Invoke(x)
-                                         let k = _f.Invoke(x)
-                                         select k).ToArray();
+                                         select _f.Invoke(x)).ToArray();
 
                         return gpuResult.SequenceEqual(cpuResult);
                     }

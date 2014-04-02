@@ -38,9 +38,11 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
                 using (var _xs = context.CreateGpuArray(xs))
                 {
-
+                    Expression<Func<int, int>> g = x => 2 * x;
+                    Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
                     var query = (from n in _xs.AsGpuQueryExpr()
-                                 where n > 10
+                                 let x = f.Invoke(n)
+                                 let y = g.Invoke(n)
                                  select (n % 2 == 0) ? 1 : 0).ToArray();
 
                     var gpuResult = context.Run(query);
