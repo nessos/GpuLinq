@@ -466,14 +466,18 @@ namespace Nessos.GpuLinq.Tests.CSharp
                         Expression<Func<int, int>> g = x => x + 1;
                         Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
                         var query = (from x in _xs.AsGpuQueryExpr()
-                                     select f.Invoke(x)).ToArray();
+                                     let y = g.Invoke(x)
+                                     let k = f.Invoke(x)
+                                     select k).ToArray();
 
                         var gpuResult = context.Run(query);
 
                         Func<int, int> _g = x => x + 1;
                         Func<int, int> _f = x => 2 * _g.Invoke(x);
                         var cpuResult = (from x in xs
-                                         select _f.Invoke(x)).ToArray();
+                                         let y = _g.Invoke(x)
+                                         let k = _f.Invoke(x)
+                                         select k).ToArray();
 
                         return gpuResult.SequenceEqual(cpuResult);
                     }
