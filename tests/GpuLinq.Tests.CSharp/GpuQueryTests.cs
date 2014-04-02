@@ -10,6 +10,13 @@ using System.Threading;
 using System.Runtime.InteropServices;
 using Nessos.GpuLinq.Core;
 using System.Linq.Expressions;
+using SMath = Nessos.GpuLinq.Core.Functions.Math;
+
+using OpenCL.Net.Extensions;
+using OpenCL.Net;
+using System.IO;
+using System.Runtime.InteropServices;
+
 
 namespace Nessos.GpuLinq.Tests.CSharp
 {
@@ -326,7 +333,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         }
 
         [Test]
-        public void MathFunctions()
+        public void MathFunctionsDouble()
         {
             using (var context = new GpuContext())
             {
@@ -343,7 +350,9 @@ namespace Nessos.GpuLinq.Tests.CSharp
                                                      let sq = Math.Sqrt(n * n)
                                                      let ex = Math.Exp(pi)
                                                      let p = Math.Pow(pi, 2)
-                                                     select f * pi * c * s * sq * ex * p).ToArray());
+                                                     let a = Math.Abs((double)c)
+                                                     let l = Math.Log(n)
+                                                     select f * pi * c * s * sq * ex * p * a * l).ToArray());
 
                         var cpuResult = (from n in xs
                                          let pi = Math.PI
@@ -353,9 +362,43 @@ namespace Nessos.GpuLinq.Tests.CSharp
                                          let sq = Math.Sqrt(n * n)
                                          let ex = Math.Exp(pi)
                                          let p = Math.Pow(pi, 2)
-                                         select f * pi * c * s * sq * ex * p).ToArray();
+                                         let a = Math.Abs(c)
+                                         let l = Math.Log(n)
+                                         select f * pi * c * s * sq * ex * p * a * l).ToArray();
 
-                        return gpuResult.Zip(cpuResult, (x, y) => System.Math.Abs(x - y) < 0.001f)
+                        return gpuResult.Zip(cpuResult, (x, y) => (Double.IsNaN(x) && Double.IsNaN(y)) ? true : System.Math.Abs(x - y) < 0.001f)
+                                        .SequenceEqual(Enumerable.Range(1, xs.Length).Select(_ => true));
+                    }
+                }).QuickCheckThrowOnFailure();
+            }
+        }
+
+        [Test]
+        public void MathFunctionsSingle()
+        {
+            using (var context = new GpuContext())
+            {
+                Spec.ForAny<int[]>(xs =>
+                {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
+
+                        var gpuResult = context.Run((from n in _xs.AsGpuQueryExpr()
+                                                     let pi = SMath.PI
+                                                     let c = SMath.Cos(n)
+                                                     let s = SMath.Sin(n)
+                                                     let f = SMath.Floor(pi)
+                                                     let sq = SMath.Sqrt(n * n)
+                                                     let ex = SMath.Exp(pi)
+                                                     let p = SMath.Pow(pi, 2)
+                                                     let a = SMath.Abs(c)
+                                                     let l = SMath.Log(n)
+                                                     select f * pi * c * s * sq * ex * p * a * l).ToArray());
+
+                        var openClResult = this.MathFunctionsSingleTest(xs);
+
+
+                        return gpuResult.Zip(openClResult, (x, y) => (float.IsNaN(x) && float.IsNaN(y)) ? true : System.Math.Abs(x - y) < 0.001)
                                         .SequenceEqual(Enumerable.Range(1, xs.Length).Select(_ => true));
                     }
                 }).QuickCheckThrowOnFailure();
@@ -462,7 +505,9 @@ namespace Nessos.GpuLinq.Tests.CSharp
                         Expression<Func<int, int>> g = x => x + 1;
                         Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
                         var query = (from x in _xs.AsGpuQueryExpr()
-                                     select f.Invoke(x)).ToArray();
+                                     let y = g.Invoke(x)
+                                     let k = f.Invoke(x)
+                                     select k).ToArray();
 
                         var gpuResult = context.Run(query);
 
@@ -477,6 +522,85 @@ namespace Nessos.GpuLinq.Tests.CSharp
             }
         }
 
+
+        [Test]
+        public void TernaryIfElse()
+        {
+            using (var context = new GpuContext())
+            {
+                Spec.ForAny<int[]>(xs =>
+                {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
+
+                        var query = (from n in _xs.AsGpuQueryExpr()
+                                     where n > 10
+                                     select (n % 2 == 0) ? 1 : 0).ToArray();
+
+                        var gpuResult = context.Run(query);
+
+
+                        var cpuResult = (from n in xs
+                                         where n > 10
+                                         select (n % 2 == 0) ? 1 : 0).ToArray();
+
+                        return gpuResult.SequenceEqual(cpuResult);
+                    }
+                }).QuickCheckThrowOnFailure();
+            }
+        }
+
+        #region Helpers
+        OpenCL.Net.Environment env = "*".CreateCLEnvironment();
+
+        public float [] MathFunctionsSingleTest(int[] input)
+        {
+            if(input.Length == 0) return new float[0];
+
+            var source =
+                @"#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+
+                __kernel void kernelCode(__global int* ___input___,  __global float* ___result___)
+                {
+                                
+                    int n0;
+                    float ___final___10;
+                    int ___flag___11;
+                    int ___id___ = get_global_id(0);
+                    n0 = ___input___[___id___];
+                                
+                    float pi = 3.14159274f;
+                    float c = cos(((float) n0));
+                    float s = sin(((float) n0));
+                    float f = floor(pi);
+                    float sq = sqrt(((float) (n0 * n0)));
+                    float ex = exp(pi);
+                    float p = powr(pi, 2.0f);
+                    float a = fabs(c);
+                    float l = log(((float) n0));
+                    ___final___10 = ((((((((f * pi) * c) * s) * sq) * ex) * p) * a) * l);
+                    ___result___[___id___] = ___final___10;
+                }
+                ";
+            var output = new float[input.Length];
+            ErrorCode error;
+            var a = Cl.CreateBuffer(env.Context, MemFlags.ReadOnly | MemFlags.None | MemFlags.UseHostPtr, (IntPtr)(input.Length * sizeof(int) ), input, out error);
+            var b = Cl.CreateBuffer(env.Context, MemFlags.WriteOnly | MemFlags.None | MemFlags.UseHostPtr, (IntPtr)(input.Length * sizeof(float)), output, out error);
+            var max = Cl.GetDeviceInfo(env.Devices[0], DeviceInfo.MaxWorkGroupSize, out error).CastTo<uint>();
+            OpenCL.Net.Program program = Cl.CreateProgramWithSource(env.Context, 1u, new string[] { source }, null, out error);
+            error = Cl.BuildProgram(program, (uint)env.Devices.Length, env.Devices, " -cl-fast-relaxed-math  -cl-mad-enable ", null, IntPtr.Zero);
+            OpenCL.Net.Kernel kernel = Cl.CreateKernel(program, "kernelCode", out error);
+            error = Cl.SetKernelArg(kernel, 0, a);
+            error = Cl.SetKernelArg(kernel, 1, b);
+            Event eventID;
+            error = Cl.EnqueueNDRangeKernel(env.CommandQueues[0], kernel, (uint)1, null, new IntPtr[] { (IntPtr)input.Length }, new IntPtr[] { (IntPtr)1 }, (uint)0, null, out eventID);
+            env.CommandQueues[0].ReadFromBuffer(b, output);
+            a.Dispose();
+            b.Dispose();
+            //env.Dispose();
+            return output;
+        }
+        #endregion
 
     }
 }

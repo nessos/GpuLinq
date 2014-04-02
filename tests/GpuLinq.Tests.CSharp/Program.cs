@@ -29,24 +29,35 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
         public static void Main(string[] args)
         {
-            
 
-            var xs = Enumerable.Range(1, 10).Select(x => x).ToArray();
-            using (var context = new GpuContext())
-            {
+            //var size = Marshal.SizeOf(typeof(bool));
 
-                using (var _xs = context.CreateGpuArray(xs))
-                {
-                    Expression<Func<int, int>> g = x => x + 1;
-                    Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
-                    var query = (from x in _xs.AsGpuQueryExpr()
-                                 select f.Invoke(x)).ToArray();
+            //var xs = Enumerable.Range(1, 10000000).Select(x => x).ToArray();
+            //using (var context = new GpuContext())
+            //{
 
-                    var result = context.Run(query);
-                }
-            }
+            //    using (var _xs = context.CreateGpuArray(xs))
+            //    {
+            //        Expression<Func<int, int>> g = x => 2 * x;
+            //        Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
+            //        var query = (from n in _xs.AsGpuQueryExpr()
+            //                     let x = f.Invoke(n)
+            //                     let y = g.Invoke(n)
+            //                     select (n % 2 == 0) ? 1 : 0).ToArray();
 
-            (new GpuQueryTests()).FunctionSplicing();
+            //        var gpuResult = context.Run(query);
+
+            //        var cpuResult =
+            //            (from n in xs
+            //             where n > 10
+            //             select (n % 2 == 0) ? 1 : 0).ToArray();
+
+            //        var result = gpuResult.SequenceEqual(cpuResult);
+            //    }
+            //}
+
+            //var x = (new GpuQueryTests()).MathFunctionsSingleTest(new int[] { 0 });;
+            (new GpuQueryTests()).MathFunctionsSingle();
         }
 
         static void Measure(Action action)
