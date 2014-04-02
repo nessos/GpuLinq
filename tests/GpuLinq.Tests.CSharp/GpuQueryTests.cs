@@ -398,7 +398,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
                         var openClResult = this.MathFunctionsSingleTest(xs);
 
 
-                        return gpuResult.Zip(openClResult, (x, y) => (float.IsNaN(x) && float.IsNaN(y)) ? true : System.Math.Abs(x - y) < 1e-5f)
+                        return gpuResult.Zip(openClResult, (x, y) => (float.IsNaN(x) && float.IsNaN(y)) ? true : System.Math.Abs(x - y) < 0.001)
                                         .SequenceEqual(Enumerable.Range(1, xs.Length).Select(_ => true));
                     }
                 }).QuickCheckThrowOnFailure();
