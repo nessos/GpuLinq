@@ -30,33 +30,34 @@ namespace Nessos.GpuLinq.Tests.CSharp
         public static void Main(string[] args)
         {
 
-            var size = Marshal.SizeOf(typeof(bool));
+            //var size = Marshal.SizeOf(typeof(bool));
 
-            var xs = Enumerable.Range(1, 10000000).Select(x => x).ToArray();
-            using (var context = new GpuContext())
-            {
+            //var xs = Enumerable.Range(1, 10000000).Select(x => x).ToArray();
+            //using (var context = new GpuContext())
+            //{
 
-                using (var _xs = context.CreateGpuArray(xs))
-                {
-                    Expression<Func<int, int>> g = x => 2 * x;
-                    Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
-                    var query = (from n in _xs.AsGpuQueryExpr()
-                                 let x = f.Invoke(n)
-                                 let y = g.Invoke(n)
-                                 select (n % 2 == 0) ? 1 : 0).ToArray();
+            //    using (var _xs = context.CreateGpuArray(xs))
+            //    {
+            //        Expression<Func<int, int>> g = x => 2 * x;
+            //        Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
+            //        var query = (from n in _xs.AsGpuQueryExpr()
+            //                     let x = f.Invoke(n)
+            //                     let y = g.Invoke(n)
+            //                     select (n % 2 == 0) ? 1 : 0).ToArray();
 
-                    var gpuResult = context.Run(query);
+            //        var gpuResult = context.Run(query);
 
-                    var cpuResult =
-                        (from n in xs
-                         where n > 10
-                         select (n % 2 == 0) ? 1 : 0).ToArray();
+            //        var cpuResult =
+            //            (from n in xs
+            //             where n > 10
+            //             select (n % 2 == 0) ? 1 : 0).ToArray();
 
-                    var result = gpuResult.SequenceEqual(cpuResult);
-                }
-            }
+            //        var result = gpuResult.SequenceEqual(cpuResult);
+            //    }
+            //}
 
-            //(new GpuQueryTests()).Count();
+            (new GpuQueryTests()).MathFunctionsSingle();
+            (new GpuQueryTests()).MathFunctionsDouble();
         }
 
         static void Measure(Action action)

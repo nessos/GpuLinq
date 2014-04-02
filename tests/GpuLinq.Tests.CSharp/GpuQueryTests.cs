@@ -10,6 +10,7 @@ using System.Threading;
 using System.Runtime.InteropServices;
 using Nessos.GpuLinq.Core;
 using System.Linq.Expressions;
+using SMath = Nessos.GpuLinq.Core.Functions.Math;
 
 namespace Nessos.GpuLinq.Tests.CSharp
 {
@@ -326,7 +327,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         }
 
         [Test]
-        public void MathFunctions()
+        public void MathFunctionsDouble()
         {
             using (var context = new GpuContext())
             {
@@ -355,11 +356,55 @@ namespace Nessos.GpuLinq.Tests.CSharp
                                          let sq = Math.Sqrt(n * n)
                                          let ex = Math.Exp(pi)
                                          let p = Math.Pow(pi, 2)
-                                         let a = Math.Abs((double)c)
+                                         let a = Math.Abs(c)
                                          let l = Math.Log(n)
                                          select f * pi * c * s * sq * ex * p * a * l).ToArray();
 
                         return gpuResult.Zip(cpuResult, (x, y) => (Double.IsNaN(x) && Double.IsNaN(y)) ? true : System.Math.Abs(x - y) < 0.001f)
+                                        .SequenceEqual(Enumerable.Range(1, xs.Length).Select(_ => true));
+                    }
+                }).QuickCheckThrowOnFailure();
+            }
+        }
+
+        [Test]
+        public void MathFunctionsSingle()
+        {
+            using (var context = new GpuContext())
+            {
+                Spec.ForAny<int[]>(xs =>
+                {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
+
+                        var gpuResult = context.Run((from n in _xs.AsGpuQueryExpr()
+                                                     let pi = SMath.PI
+                                                     let c = SMath.Cos(n)
+                                                     let s = SMath.Sin(n)
+                                                     let f = SMath.Floor(pi)
+                                                     let sq = SMath.Sqrt(n * n)
+                                                     let ex = SMath.Exp(pi)
+                                                     let p = SMath.Pow(pi, 2)
+                                                     let a = SMath.Abs(c)
+                                                     let l = SMath.Log(n)
+                                                     select f * pi * c * s * sq * ex * p * a * l).ToArray());
+
+                        var cpuResult = (from n in xs
+                                         let pi = Math.PI
+                                         let c = Math.Cos(n)
+                                         let s = Math.Sin(n)
+                                         let f = Math.Floor(pi)
+                                         let sq = Math.Sqrt(n * n)
+                                         let ex = Math.Exp(pi)
+                                         let p = Math.Pow(pi, 2)
+                                         let a = Math.Abs(c)
+                                         let l = Math.Log(n)
+                                         select f * pi * c * s * sq * ex * p * a * l)
+                                         .Select(p => (float)p)
+                                         .ToArray();
+                                         
+
+                        return gpuResult.Zip(cpuResult, (x, y) => (float.IsNaN(x) && float.IsNaN(y)) ? true : System.Math.Abs(x - y) < 0.1f)
                                         .SequenceEqual(Enumerable.Range(1, xs.Length).Select(_ => true));
                     }
                 }).QuickCheckThrowOnFailure();

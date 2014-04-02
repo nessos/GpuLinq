@@ -93,6 +93,10 @@
                     | MethodCall (objExpr, methodInfo, [argExpr]) when methodInfo.Name = "get_Item" ->
                         sprintf' "%s[%s]" (exprToStr objExpr vars) (exprToStr argExpr vars)
                     // Math functions
+                    | PropertyMember(expr, mi) when mi.Name = "PI" ->
+                        let pi = mi :?> System.Reflection.PropertyInfo
+                        let value = pi.GetValue(null, null)
+                        sprintf' "%A" value
                     | MethodCall (objExpr, methodInfo, [argExpr]) when methodInfo.Name = "Cos" ->
                         sprintf' "cos(%s)" (exprToStr argExpr vars)
                     | MethodCall (objExpr, methodInfo, [argExpr]) when methodInfo.Name = "Sin" ->
