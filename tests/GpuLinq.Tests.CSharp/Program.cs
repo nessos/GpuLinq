@@ -57,7 +57,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
             //}
 
             //var x = (new GpuQueryTests()).MathFunctionsSingleTest(new int[] { 0 });;
-            (new GpuQueryTests()).MathFunctionsSingle();
+            (new GpuQueryTests()).FunctionSplicing();
         }
 
         static void Measure(Action action)

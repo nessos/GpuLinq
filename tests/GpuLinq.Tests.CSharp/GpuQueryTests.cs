@@ -15,7 +15,6 @@ using SMath = Nessos.GpuLinq.Core.Functions.Math;
 using OpenCL.Net.Extensions;
 using OpenCL.Net;
 using System.IO;
-using System.Runtime.InteropServices;
 
 
 namespace Nessos.GpuLinq.Tests.CSharp
@@ -471,7 +470,6 @@ namespace Nessos.GpuLinq.Tests.CSharp
         }
         #endregion
 
-
         [Test]
         public void Fill()
         {
@@ -504,9 +502,11 @@ namespace Nessos.GpuLinq.Tests.CSharp
                     {
                         Expression<Func<int, int>> g = x => x + 1;
                         Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
+                        Expression<Func<int, int>> h = x => g.Invoke(x) + f.Invoke(1);
                         var query = (from x in _xs.AsGpuQueryExpr()
-                                     let y = g.Invoke(x)
+                                     let m = h.Invoke(x)
                                      let k = f.Invoke(x)
+                                     let y = g.Invoke(x)
                                      select k).ToArray();
 
                         var gpuResult = context.Run(query);

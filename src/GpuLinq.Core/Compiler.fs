@@ -156,7 +156,7 @@
                     | _ -> failwithf "Not supported %A" expr
 
                 let rec collectFuncsStr (paramExprs : ParameterExpression[], values : obj[]) = 
-                    let funcsStr = 
+                    let funcs = 
                         (paramExprs, values) 
                         ||> Array.zip 
                         |> Array.map (fun (paramExpr, value) -> 
@@ -164,19 +164,33 @@
                                         | :? Expression as expr -> 
                                             match expr with
                                             | Lambda ([varExpr], bodyExpr) -> 
-                                                let expr, paramExprs, objs = ConstantLiftingTransformer.apply bodyExpr
-                                                let exprStr = exprToStr expr [varExpr]
-                                                let funcStr = sprintf' "inline %s %s(%s %s) { return %s; }%s " 
-                                                                (typeToStr bodyExpr.Type) paramExpr.Name (typeToStr varExpr.Type) 
-                                                                (varExprToStr varExpr [varExpr]) exprStr Environment.NewLine
-                                                                
-                                                Seq.append [funcStr]  (collectFuncsStr (paramExprs, objs))
-                                            | _ -> [""] :> _
-                                        | _ -> [""] :> _)
+                                                Some(paramExpr, varExpr, ConstantLiftingTransformer.apply bodyExpr)
+                                            | _ -> None
+                                        | _ -> None)
+                    
+                    let (temp, none) = funcs |> Array.partition Option.isSome
+                    
+                    let ordered = GpuFunctionDependencyAnalysis.sort(Array.map Option.get temp, paramExprs)
+                    let orderedFuns = ordered |> Array.map Some
+                                              |> Array.append none
+
+                    let funcsStr = 
+                        orderedFuns
+                        |> Array.map (
+                            function
+                            | Some(paramExpr, varExpr, (expr, paramExprs, objs)) ->
+                                let exprStr = exprToStr expr [varExpr]
+                                let funcStr = sprintf' "inline %s %s(%s %s) { return %s; }%s " 
+                                                (typeToStr expr.Type) paramExpr.Name (typeToStr varExpr.Type) 
+                                                (varExprToStr varExpr [varExpr]) exprStr Environment.NewLine
+                                                                    
+                                Seq.append [funcStr]  (collectFuncsStr (paramExprs, objs))
+                            | None -> [""] :> _)
                         
-                    funcsStr |> Seq.concat
+                    let declarations = funcsStr |> Seq.concat |> Seq.toArray |> Array.rev
+                    declarations
                 let headerStr (exprs : Expression[], paramExprs : ParameterExpression[], values : obj[]) = 
-                    let funcsStr = collectFuncsStr (paramExprs, values) |> Seq.distinct |> List.ofSeq |> List.rev |> String.concat Environment.NewLine
+                    let funcsStr = collectFuncsStr (paramExprs, values) |> Seq.distinct |> List.ofSeq |> String.concat Environment.NewLine
                     let structsStr = structsDefinitionStr exprs
                     [KernelTemplates.openCLExtensions; funcsStr; structsStr] |> String.concat Environment.NewLine
 
