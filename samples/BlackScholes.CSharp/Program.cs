@@ -68,7 +68,7 @@ namespace BlackScholes.CSharp
                   cumulativeNormalDistribution.Invoke(-_d2) - stockPrice * cumulativeNormalDistribution.Invoke(-_d1);
         
             // Init data
-            var random = new System.Random(42);
+            var random = new System.Random();
             var data = Enumerable.Range(1, optionCount).Select(_ => new InputData
                                                                         {
                                                                             Stock = random.Random(5.0f, 30.0f),
