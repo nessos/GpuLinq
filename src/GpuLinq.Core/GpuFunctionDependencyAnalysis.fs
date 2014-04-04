@@ -40,7 +40,7 @@ module GpuFunctionDependencyAnalysis =
         let graph = new Dictionary<string, List<ParameterExpression>>()
         temp
         |> Seq.map (fun (param, body) -> param, find(body, paramExprs))
-        |> Seq.iter(fun (k,v) -> graph.Add(k.Name,v))
+        |> Seq.iter(fun (k,v) -> graph.[k.Name] <- v)
 
 
         // DFS/ topological sorting

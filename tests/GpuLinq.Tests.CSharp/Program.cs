@@ -57,7 +57,25 @@ namespace Nessos.GpuLinq.Tests.CSharp
             //}
 
             //var x = (new GpuQueryTests()).MathFunctionsSingleTest(new int[] { 0 });;
-            (new GpuQueryTests()).FunctionSplicingVariadic();
+            //(new GpuQueryTests()).FunctionSplicingVariadic();
+
+
+            using (var context = new GpuContext())
+            {
+                using (var _xs = context.CreateGpuArray(new [] { 1,2 }))
+                {
+                    Expression<Func<int, int>> f1 = x => x;
+                    Expression<Func<int, int>> f2 = x => x - 1;
+                    Expression<Func<int, int>> f3 = x => f1.Invoke(x) + f1.Invoke(x) + f2.Invoke(x);
+
+                    var query = (from x in _xs.AsGpuQueryExpr()
+                                 select f3.Invoke(x)).ToArray();
+
+                    var gpuResult = context.Run(query);
+
+                }
+            }
+
         }
 
         static void Measure(Action action)
