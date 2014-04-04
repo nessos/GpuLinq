@@ -28,6 +28,15 @@
         let breakLabel () = labelTarget "brk"
         let continueLabel () = labelTarget "cont"
 
+        let (|GpuFunctionInvoke|_|) (expr : Expression) =
+            match expr with
+            | MethodCall (objExpr, methodInfo, (Parameter funcExpr :: args)) 
+                when typeof<Expression>.IsAssignableFrom(funcExpr.Type) 
+                && methodInfo.Name = "Invoke" ->
+                Some(funcExpr, args)
+            | _ -> None
+                        //sprintf' "%s(%s, %s, %s, %s, %s)" funcExpr.Name (exprToStr arg1 vars) (exprToStr arg2 vars) (exprToStr arg3 vars) (exprToStr arg4 vars) (exprToStr arg5 vars)
+
         let rec compile (queryExpr : QueryExpr) : CompilerResult = 
 
             let rec compile' (queryExpr : QueryExpr) (context : QueryContext) =
@@ -116,21 +125,11 @@
                         sprintf' "fabs(%s)" (exprToStr argExpr vars)
 
                     // Expr Call
-                    | MethodCall (objExpr, methodInfo, [Parameter funcExpr; argExpr]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
-                                                                                 methodInfo.Name = "Invoke" ->
-                        sprintf' "%s(%s)" funcExpr.Name (exprToStr argExpr vars)
-                    | MethodCall (objExpr, methodInfo, [Parameter funcExpr; arg1; arg2]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
-                                                                                 methodInfo.Name = "Invoke" ->
-                        sprintf' "%s(%s, %s)" funcExpr.Name (exprToStr arg1 vars) (exprToStr arg2 vars)
-                    | MethodCall (objExpr, methodInfo, [Parameter funcExpr; arg1; arg2; arg3]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
-                                                                                 methodInfo.Name = "Invoke" ->
-                        sprintf' "%s(%s, %s, %s)" funcExpr.Name (exprToStr arg1 vars) (exprToStr arg2 vars) (exprToStr arg3 vars)
-                    | MethodCall (objExpr, methodInfo, [Parameter funcExpr; arg1; arg2; arg3; arg4]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
-                                                                                 methodInfo.Name = "Invoke" ->
-                        sprintf' "%s(%s, %s, %s, %s)" funcExpr.Name (exprToStr arg1 vars) (exprToStr arg2 vars) (exprToStr arg3 vars) (exprToStr arg4 vars)
-                    | MethodCall (objExpr, methodInfo, [Parameter funcExpr; arg1; arg2; arg3; arg4; arg5]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
-                                                                                 methodInfo.Name = "Invoke" ->
-                        sprintf' "%s(%s, %s, %s, %s, %s)" funcExpr.Name (exprToStr arg1 vars) (exprToStr arg2 vars) (exprToStr arg3 vars) (exprToStr arg4 vars) (exprToStr arg5 vars)
+                    | GpuFunctionInvoke(funcExpr, args) when args.Length >= 1 ->
+                        let paramsString =
+                            args |> List.map (fun arg -> exprToStr arg vars)
+                                 |> List.reduce (fun l r -> sprintf' "%s, %s" l r)
+                        sprintf' "%s(%s)" funcExpr.Name paramsString
                     | ValueTypeMemberInit (members, bindings) ->
                         let bindingsStr = bindings |> Seq.fold (fun bindingsStr binding -> sprintf' ".%s = %s, %s" binding.Member.Name (exprToStr binding.Expression vars) bindingsStr) ""
                         sprintf' "(%s) { %s }" (typeToStr expr.Type) bindingsStr
