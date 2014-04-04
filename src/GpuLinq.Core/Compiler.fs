@@ -119,6 +119,18 @@
                     | MethodCall (objExpr, methodInfo, [Parameter funcExpr; argExpr]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
                                                                                  methodInfo.Name = "Invoke" ->
                         sprintf' "%s(%s)" funcExpr.Name (exprToStr argExpr vars)
+                    | MethodCall (objExpr, methodInfo, [Parameter funcExpr; arg1; arg2]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
+                                                                                 methodInfo.Name = "Invoke" ->
+                        sprintf' "%s(%s, %s)" funcExpr.Name (exprToStr arg1 vars) (exprToStr arg2 vars)
+                    | MethodCall (objExpr, methodInfo, [Parameter funcExpr; arg1; arg2; arg3]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
+                                                                                 methodInfo.Name = "Invoke" ->
+                        sprintf' "%s(%s, %s, %s)" funcExpr.Name (exprToStr arg1 vars) (exprToStr arg2 vars) (exprToStr arg3 vars)
+                    | MethodCall (objExpr, methodInfo, [Parameter funcExpr; arg1; arg2; arg3; arg4]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
+                                                                                 methodInfo.Name = "Invoke" ->
+                        sprintf' "%s(%s, %s, %s, %s)" funcExpr.Name (exprToStr arg1 vars) (exprToStr arg2 vars) (exprToStr arg3 vars) (exprToStr arg4 vars)
+                    | MethodCall (objExpr, methodInfo, [Parameter funcExpr; arg1; arg2; arg3; arg4; arg5]) when typeof<Expression>.IsAssignableFrom(funcExpr.Type) &&
+                                                                                 methodInfo.Name = "Invoke" ->
+                        sprintf' "%s(%s, %s, %s, %s, %s)" funcExpr.Name (exprToStr arg1 vars) (exprToStr arg2 vars) (exprToStr arg3 vars) (exprToStr arg4 vars) (exprToStr arg5 vars)
                     | ValueTypeMemberInit (members, bindings) ->
                         let bindingsStr = bindings |> Seq.fold (fun bindingsStr binding -> sprintf' ".%s = %s, %s" binding.Member.Name (exprToStr binding.Expression vars) bindingsStr) ""
                         sprintf' "(%s) { %s }" (typeToStr expr.Type) bindingsStr
