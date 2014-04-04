@@ -29,8 +29,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
         public static void Main(string[] args)
         {
-            var test1 = File.ReadAllText("c:\\test1.txt");
-            var test2 = File.ReadAllText("c:\\test2.txt");
+
             //var size = Marshal.SizeOf(typeof(bool));
 
             //var xs = Enumerable.Range(1, 10000000).Select(x => x).ToArray();
@@ -58,7 +57,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
             //}
 
             //var x = (new GpuQueryTests()).MathFunctionsSingleTest(new int[] { 0 });;
-            //(new GpuQueryTests()).FFT();
+            (new GpuQueryTests()).FunctionSplicingVariadic();
         }
 
         static void Measure(Action action)

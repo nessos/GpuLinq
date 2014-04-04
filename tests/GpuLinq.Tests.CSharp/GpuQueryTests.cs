@@ -522,6 +522,38 @@ namespace Nessos.GpuLinq.Tests.CSharp
             }
         }
 
+        [Test]
+        public void FunctionSplicingVariadic()
+        {
+            using (var context = new GpuContext())
+            {
+                Spec.ForAny<int[]>(xs =>
+                {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
+                        Expression<Func<int, int>> g = x => x + 1;
+                        Expression<Func<int, int, int>> f = (x,y) => y * g.Invoke(x);
+                        Expression<Func<int, int, int, int>> h = (x,y,z) => g.Invoke(x) + f.Invoke(y,z);
+                        Expression<Func<int, int, int, int, int>> i = (x,y,z,w) => g.Invoke(x) + f.Invoke(x,y) + h.Invoke(x,y,z) + w;
+                        var query = (from x in _xs.AsGpuQueryExpr()
+                                     let n = i.Invoke(x,x,x,x)
+                                     let m = h.Invoke(x,x,x)
+                                     let l = f.Invoke(x,x)
+                                     let k = g.Invoke(x)
+                                     select k).ToArray();
+
+                        var gpuResult = context.Run(query);
+
+                        Func<int, int> _g = x => x + 1;
+                        var cpuResult = (from x in xs
+                                         select _g.Invoke(x)).ToArray();
+
+                        return gpuResult.SequenceEqual(cpuResult);
+                    }
+                }).QuickCheckThrowOnFailure();
+            }
+        }
+
 
         [Test]
         public void TernaryIfElse()
