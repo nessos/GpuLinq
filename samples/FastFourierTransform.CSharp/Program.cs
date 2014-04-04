@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using Nessos.GpuLinq.Base;
 using Nessos.GpuLinq.Core;
 using Nessos.GpuLinq.CSharp;
 
