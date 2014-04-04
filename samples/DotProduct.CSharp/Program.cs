@@ -14,7 +14,7 @@ namespace DotProduct.CSharp
         {
             int size = 1000;
             Random random = new Random();
-            var input = Enumerable.Range(1, size).Select(x => random.NextDouble()).ToArray();
+            var input = Enumerable.Range(1, size).Select(x => (float)random.NextDouble()).ToArray();
             using (var context = new GpuContext())
             {
 

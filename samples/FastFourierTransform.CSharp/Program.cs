@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Nessos.GpuLinq.Base;
 using Nessos.GpuLinq.Core;
 using Nessos.GpuLinq.CSharp;
+using FMath = Nessos.GpuLinq.Core.Functions.Math;
 
 namespace FastFourierTransform.CSharp
 {
@@ -17,16 +18,16 @@ namespace FastFourierTransform.CSharp
         [StructLayout(LayoutKind.Sequential)]
         struct Complex
         {
-            public double A;
-            public double B;
+            public float A;
+            public float B;
         }
         static void Main(string[] args)
         {
             int size = 8388608;
             // Input Data
             Random random = new Random();
-            var input = Enumerable.Range(1, size).Select(x => new Complex { A = random.NextDouble(), B = 0.0 }).ToArray();
-            var output = Enumerable.Range(1, size).Select(x => new Complex { A = 0.0, B = 0.0 }).ToArray();
+            var input = Enumerable.Range(1, size).Select(x => new Complex { A = (float)random.NextDouble(), B = 0.0f }).ToArray();
+            var output = Enumerable.Range(1, size).Select(x => new Complex { A = 0.0f, B = 0.0f }).ToArray();
             var xs = Enumerable.Range(0, size - 1).ToArray();
             
             using(var context = new GpuContext())
@@ -40,14 +41,14 @@ namespace FastFourierTransform.CSharp
                     for (int i = 0; i < System.Math.Log(size, 2.0); i++)
                     {
                         var query = (from x in _xs.AsGpuQueryExpr()
-                                     let b = (((int)System.Math.Floor((double)x / fftSize)) * (fftSize / 2))
+                                     let b = (((int)FMath.Floor((float)x / fftSize)) * (fftSize / 2))
                                      let offset = x % (fftSize / 2)
                                      let x0 = b + offset
                                      let x1 = x0 + size / 2
                                      let val0 = _input[x0]
                                      let val1 = _input[x1]
-                                     let angle = -2 * System.Math.PI * (x / fftSize)
-                                     let t = new Complex { A = System.Math.Cos(angle), B = System.Math.Sin(angle) }
+                                     let angle = -2 * FMath.PI * (x / fftSize)
+                                     let t = new Complex { A = FMath.Cos(angle), B = FMath.Sin(angle) }
                                      select new Complex
                                      {
                                          A = val0.A + t.A * val1.A - t.B * val1.B,
