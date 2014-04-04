@@ -34,7 +34,7 @@ module GpuFunctionDependencyAnalysis =
         v.Visit(body) |> ignore
         v.GetDependencies()
 
-    let sort (funcs : (ParameterExpression * ParameterExpression * (Expression * ParameterExpression [] * obj [])) [], paramExprs : ParameterExpression []) =
+    let sort (funcs : (ParameterExpression * ParameterExpression list * (Expression * ParameterExpression [] * obj [])) [], paramExprs : ParameterExpression []) =
         let temp = funcs |> Array.map (fun (paramExpr, varExpr, (expr, paramExprs, objs)) -> paramExpr, expr)
         
         let graph = new Dictionary<string, List<ParameterExpression>>()

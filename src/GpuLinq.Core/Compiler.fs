@@ -174,8 +174,8 @@
                                         match value with
                                         | :? Expression as expr -> 
                                             match expr with
-                                            | Lambda ([varExpr], bodyExpr) -> 
-                                                Some(paramExpr, varExpr, ConstantLiftingTransformer.apply bodyExpr)
+                                            | Lambda (varExprs, bodyExpr) -> 
+                                                Some(paramExpr, varExprs, ConstantLiftingTransformer.apply bodyExpr)
                                             | _ -> None
                                         | _ -> None)
                     
@@ -189,11 +189,14 @@
                         orderedFuns
                         |> Array.map (
                             function
-                            | Some(paramExpr, varExpr, (expr, paramExprs, objs)) ->
-                                let exprStr = exprToStr expr [varExpr]
-                                let funcStr = sprintf' "inline %s %s(%s %s) { return %s; }%s " 
-                                                (typeToStr expr.Type) paramExpr.Name (typeToStr varExpr.Type) 
-                                                (varExprToStr varExpr [varExpr]) exprStr Environment.NewLine
+                            | Some(paramExpr, varExprs, (expr, paramExprs, objs)) ->
+                                let exprStr = exprToStr expr varExprs
+                                let parameterStr = varExprs 
+                                                   |> List.map (fun varExpr -> 
+                                                        sprintf' "%s %s" (typeToStr varExpr.Type) (varExprToStr varExpr varExprs))
+                                                   |> List.reduce (sprintf' "%s, %s")
+                                let funcStr = sprintf' "inline %s %s(%s) { return %s; }%s " 
+                                                (typeToStr expr.Type) paramExpr.Name parameterStr exprStr Environment.NewLine
                                                                     
                                 Seq.append [funcStr]  (collectFuncsStr (paramExprs, objs))
                             | None -> [""] :> _)
