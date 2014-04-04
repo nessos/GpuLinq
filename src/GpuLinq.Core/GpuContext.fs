@@ -9,16 +9,40 @@
     open OpenCL.Net.Extensions
     open OpenCL.Net
 
-
+    [<FlagsAttribute>]
+    /// <summary>
+    /// Options that can be used by the OpenCL compiler.
+    /// </summary>
+    type GpuCompileOptions =
+        | FastRelaxedMath         = 1uy
+        | FusedMultiplyAdd        = 2uy
+        | DisableOptimizations    = 4uy
+        | StrictAliasing          = 8uy
+        | NoSignedZeros           = 16uy
+        | UnsafeMathOptimizations = 32uy
+        | FiniteMathOnly          = 64uy
 
     /// <summary>
     /// A scoped Context that manages GPU kernel execution and caching  
     /// </summary>
-    type GpuContext() =
-        // Context enviroment
+    type GpuContext(compileOptions : GpuCompileOptions) =
+        // Context environment
         let env = "*".CreateCLEnvironment()
         let cache = Dictionary<string, (Program * Kernel)>()
         let buffers = new System.Collections.Generic.List<IGpuArray>()
+        
+        let compileOptionsToString (options : GpuCompileOptions) =
+            let sb = new Text.StringBuilder()
+            let contains pattern = options &&& pattern = pattern
+            if contains GpuCompileOptions.FastRelaxedMath           then sb.Append(" -cl-fast-relaxed-math ")           |> ignore
+            if contains GpuCompileOptions.FusedMultiplyAdd          then sb.Append(" -cl-mad-enable ")                  |> ignore
+            if contains GpuCompileOptions.DisableOptimizations      then sb.Append(" -cl-opt-disable ")                 |> ignore
+            if contains GpuCompileOptions.StrictAliasing            then sb.Append(" -cl-strict-aliasing ")             |> ignore
+            if contains GpuCompileOptions.NoSignedZeros             then sb.Append(" -cl-no-signed-zeros ")             |> ignore
+            if contains GpuCompileOptions.UnsafeMathOptimizations   then sb.Append(" -cl-unsafe-math-optimizations ")   |> ignore
+            if contains GpuCompileOptions.FiniteMathOnly            then sb.Append(" -cl-finite-math-only ")            |> ignore
+            sb.ToString()
+
         // helper functions
         let createBuffer (t : Type) (env : Environment) (length : int) =
             match Cl.CreateBuffer(env.Context, MemFlags.ReadWrite ||| MemFlags.None ||| MemFlags.AllocHostPtr, new IntPtr(length * Marshal.SizeOf(t))) with
@@ -88,7 +112,7 @@
                 let program, kernel = 
                     match Cl.CreateProgramWithSource(env.Context, 1u, [| source |], null) with
                     | program, ErrorCode.Success ->
-                        match Cl.BuildProgram(program, uint32 env.Devices.Length, env.Devices, " -cl-fast-relaxed-math  -cl-mad-enable ", null, IntPtr.Zero) with
+                        match Cl.BuildProgram(program, uint32 env.Devices.Length, env.Devices, compileOptionsToString compileOptions, null, IntPtr.Zero) with
                         | ErrorCode.Success -> 
                             match Cl.CreateKernel(program, "kernelCode") with
                             | kernel, ErrorCode.Success -> 
@@ -126,6 +150,9 @@
                         addKernelBufferArg kernel (gpuArray.GetBuffer()) argIndex
                     else incr argIndex
                 | _ -> failwithf "Not supported result type %A" t
+
+        new() =
+            new GpuContext(GpuCompileOptions.FastRelaxedMath ||| GpuCompileOptions.FusedMultiplyAdd)
 
         /// <summary>
         /// Creates a GpuArray 
