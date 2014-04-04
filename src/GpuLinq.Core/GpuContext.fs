@@ -73,6 +73,9 @@
             | TypeCheck Compiler.floatType _ ->  
                 let output = output :?> single[]
                 queue.ReadFromBuffer(outputBuffer, output, 0, int64 output.Length)
+            | TypeCheck Compiler.doubleType _ ->  
+                let output = output :?> double[]
+                queue.ReadFromBuffer(outputBuffer, output, 0, int64 output.Length)
             | TypeCheck Compiler.boolType _ ->  
                 let output = output :?> bool[]
                 queue.ReadFromBuffer(outputBuffer, output, 0, int64 output.Length)
@@ -296,6 +299,8 @@
                                 (output :?> int[]).Sum() :> obj :?> _ 
                             | TypeCheck Compiler.floatType _ ->  
                                 (output :?> System.Single[]).Sum() :> obj :?> _  
+                            | TypeCheck Compiler.doubleType _ ->  
+                                (output :?> System.Double[]).Sum() :> obj :?> _  
                             | t -> failwithf "Not supported result type %A" t
                         | error, _  -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                     | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
