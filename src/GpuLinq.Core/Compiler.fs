@@ -66,23 +66,15 @@
                         (t.GetFields(), "")
                         ||> Array.foldBack (fun fieldInfo fieldsStr -> sprintf' "%s %s; %s" (typeToStr fieldInfo.FieldType) fieldInfo.Name fieldsStr) 
                     sprintf' "typedef struct { %s } %s;" fieldsStr t.Name
-                let collectCustomStructs (expr : Expression) = 
-                    match expr with
-                    | AnonymousTypeAssign(_ ,AnonymousTypeConstruction(members, args)) 
-                        when isCustomStruct <| args.Last().Type -> 
-                        [args.Last().Type] 
-                    | Assign (Parameter (paramExpr), expr') when isCustomStruct paramExpr.Type -> 
-                        [paramExpr.Type]
-                    | _ when isCustomStruct expr.Type -> [expr.Type]
-                    | _ -> []
                 let customStructsToStr (types : seq<Type>) = 
                     types 
                     |> Seq.map structToStr
                     |> Set.ofSeq
                     |> Seq.fold (fun first second -> sprintf' "%s%s%s" first Environment.NewLine second) ""
-                let structsDefinitionStr (exprs : seq<Expression>) =
-                    exprs
-                    |> Seq.collect collectCustomStructs
+                let structsDefinitionStr (vars : seq<ParameterExpression>) =
+                    vars
+                    |> Seq.map (fun var -> var.Type)
+                    |> Seq.filter isCustomStruct 
                     |> customStructsToStr
                 let argsToStr (argParamExprs : ParameterExpression[]) (paramExprs : seq<ParameterExpression>) = 
                     let argParamExprs = argParamExprs |> Array.filter (fun paramExpr -> not <| typeof<Expression>.IsAssignableFrom(paramExpr.Type))
@@ -203,9 +195,9 @@
                         
                     let declarations = funcsStr |> Seq.concat |> Seq.toArray |> Array.rev
                     declarations
-                let headerStr (exprs : Expression[], paramExprs : ParameterExpression[], values : obj[]) = 
+                let headerStr (vars : seq<ParameterExpression>, paramExprs : ParameterExpression[], values : obj[]) = 
                     let funcsStr = collectFuncsStr (paramExprs, values) |> Seq.distinct |> List.ofSeq |> String.concat Environment.NewLine
-                    let structsStr = structsDefinitionStr exprs
+                    let structsStr = structsDefinitionStr vars
                     [KernelTemplates.openCLExtensions; funcsStr; structsStr] |> String.concat Environment.NewLine
 
                 let bodyStr (exprs : seq<Expression>) (vars : seq<ParameterExpression>) =
@@ -233,7 +225,7 @@
                     let sourceLength = gpuArraySource.Length
                     let exprs, paramExprs, values = constantLifting context.Exprs
                     let vars = Seq.append paramExprs context.VarExprs
-                    let headerStr = headerStr (exprs, paramExprs, values)
+                    let headerStr = headerStr (vars, paramExprs, values)
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
@@ -258,7 +250,7 @@
                     let sourceLength = firstGpuArray.Length
                     let exprs, paramExprs, values = constantLifting context.Exprs
                     let vars = Seq.append paramExprs vars
-                    let headerStr = headerStr (exprs, paramExprs, values)
+                    let headerStr = headerStr (vars, paramExprs, values)
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
