@@ -23,6 +23,7 @@ namespace FastFourierTransform.CSharp
         }
         static void Main(string[] args)
         {
+            // Based on http://brahma.codeplex.com/SourceControl/latest#trunk/Source/Samples/OpenCL/FastFourierTransform/Program.cs
             int size = 8388608;
             // Input Data
             Random random = new Random();
