@@ -159,44 +159,44 @@
                     | _ -> failwithf "Not supported %A" expr
 
                 let rec collectFuncsStr (paramExprs : ParameterExpression[], values : obj[]) = 
-                    let funcs = 
-                        (paramExprs, values) 
-                        ||> Array.zip 
-                        |> Array.map (fun (paramExpr, value) -> 
-                                        match value with
-                                        | :? Expression as expr -> 
-                                            match expr with
-                                            | Lambda (varExprs, bodyExpr) -> 
-                                                Some(paramExpr, varExprs, ConstantLiftingTransformer.apply bodyExpr)
-                                            | _ -> None
-                                        | _ -> None)
                     
-                    let (temp, none) = funcs |> Array.partition Option.isSome
-                    
-                    let ordered = GpuFunctionDependencyAnalysis.sort(Array.map Option.get temp, paramExprs)
-                    let orderedFuns = ordered |> Array.map Some
-                                              |> Array.append none
-
-                    let funcsStr = 
-                        orderedFuns
-                        |> Array.map (
-                            function
-                            | Some(paramExpr, varExprs, (expr, paramExprs, objs)) ->
-                                let exprStr = exprToStr expr varExprs
-                                let parameterStr = varExprs 
-                                                   |> List.map (fun varExpr -> 
-                                                        sprintf' "%s %s" (typeToStr varExpr.Type) (varExprToStr varExpr varExprs))
-                                                   |> List.reduce (sprintf' "%s, %s")
-                                let funcStr = sprintf' "inline %s %s(%s) { return %s; }%s " 
-                                                (typeToStr expr.Type) paramExpr.Name parameterStr exprStr Environment.NewLine
-                                                                    
-                                Seq.append [funcStr]  (collectFuncsStr (paramExprs, objs))
-                            | None -> [""] :> _)
+                    let rec collect_aux (paramExprs : ParameterExpression[], values : obj[]) =
+                        let funcsStr = 
+                            (paramExprs, values) 
+                            ||> Array.zip 
+                            |> Array.map (fun (paramExpr, value) -> 
+                                            match value with
+                                            | :? Expression as expr -> 
+                                                match expr with
+                                                | Lambda (varExprs, bodyExpr) -> 
+                                                    let expr, paramExprs, objs as h = ConstantLiftingTransformer.apply bodyExpr
+                                                    Seq.append [paramExpr, varExprs, h] (collect_aux(paramExprs, objs))
+                                                | _ -> [] :> _
+                                            | _ -> [] :> _)
                         
-                    let declarations = funcsStr |> Seq.concat |> Seq.toArray |> Array.rev
-                    declarations
+                        funcsStr |> Seq.concat
+
+                    let funcs = collect_aux(paramExprs, values)
+                                |> Seq.groupBy (fun (param,a,b) -> param.Name) // 
+                                |> Seq.map (snd >> Seq.head)                   // Distinct
+                                |> Seq.toArray
+
+                    let ordered = GpuFunctionDependencyAnalysis.sort(funcs)
+                    let funcsStr = ordered
+                                   |> Array.map(fun (paramExpr, varExprs, (expr, paramExprs, objs)) ->
+                                                    let exprStr = exprToStr expr varExprs
+                                                    let parameterStr = varExprs 
+                                                                       |> List.map (fun varExpr -> 
+                                                                            sprintf' "%s %s" (typeToStr varExpr.Type) (varExprToStr varExpr varExprs))
+                                                                       |> List.reduce (sprintf' "%s, %s")
+                                                    let funcStr = sprintf' "inline %s %s(%s) { return %s; }%s " 
+                                                                    (typeToStr expr.Type) paramExpr.Name parameterStr exprStr Environment.NewLine
+                                                    funcStr)
+                    let collect = funcsStr |> String.concat Environment.NewLine
+                    collect
+
                 let headerStr (vars : seq<ParameterExpression>, paramExprs : ParameterExpression[], values : obj[]) = 
-                    let funcsStr = collectFuncsStr (paramExprs, values) |> Seq.distinct |> List.ofSeq |> String.concat Environment.NewLine
+                    let funcsStr = collectFuncsStr (paramExprs, values) 
                     let structsStr = structsDefinitionStr vars
                     [KernelTemplates.openCLExtensions; funcsStr; structsStr] |> String.concat Environment.NewLine
 

@@ -23,21 +23,25 @@ module GpuFunctionDependencyAnalysis =
             let dependencies = new List<ParameterExpression>()
             
             override this.VisitMethodCall(expr : MethodCallExpression) : Expression =
+                //Diagnostics.Debugger.Break()
                 if isGpuInvoke expr then
                     dependencies.Add(expr.Arguments.[0] :?> ParameterExpression)
                 expr :> _
 
             member this.GetDependencies () = dependencies
+                                             |> Seq.groupBy(fun x -> x.Name)
+                                             |> Seq.map (snd >> Seq.head)
+                                             |> Seq.toArray
     
     let private find (body : Expression, paramExprs : ParameterExpression []) =
         let v = new GpuFunctionDependencyVisitor(paramExprs)
         v.Visit(body) |> ignore
         v.GetDependencies()
 
-    let sort (funcs : (ParameterExpression * ParameterExpression list * (Expression * ParameterExpression [] * obj [])) [], paramExprs : ParameterExpression []) =
+    let sort (funcs : (ParameterExpression * ParameterExpression list * (Expression * ParameterExpression [] * obj [])) []) =
         let temp = funcs |> Array.map (fun (paramExpr, varExpr, (expr, paramExprs, objs)) -> paramExpr, expr)
-        
-        let graph = new Dictionary<string, List<ParameterExpression>>()
+        let paramExprs = temp |> Array.map fst
+        let graph = new Dictionary<string, seq<ParameterExpression>>()
         temp
         |> Seq.map (fun (param, body) -> param, find(body, paramExprs))
         |> Seq.iter(fun (k,v) -> graph.[k.Name] <- v)
@@ -51,7 +55,7 @@ module GpuFunctionDependencyAnalysis =
             for node in graph do
                 if visited.Contains(node.Key) then ()
                 else
-                    let rec dfs (node : KeyValuePair<string, List<ParameterExpression>>) =
+                    let rec dfs (node : KeyValuePair<string, seq<ParameterExpression>>) =
                         seq {
                             for childNode in node.Value do
                                 if not(visited.Contains(childNode.Name)) then
