@@ -17,6 +17,8 @@
     <SccLocalPath>SAK</SccLocalPath>
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -38,11 +40,16 @@
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="LinqOptimizer.Base">
-      <HintPath>..\packages\LinqOptimizer.CSharp.0.5.2.1\lib\LinqOptimizer.Base.dll</HintPath>
+    <Reference Include="LinqOptimizer.Base, Version=0.5.2.29915, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\LinqOptimizer\src\LinqOptimizer.CSharp\bin\Debug\LinqOptimizer.Base.dll</HintPath>
     </Reference>
-    <Reference Include="LinqOptimizer.CSharp">
-      <HintPath>..\packages\LinqOptimizer.CSharp.0.5.2.1\lib\LinqOptimizer.CSharp.dll</HintPath>
+    <Reference Include="LinqOptimizer.Core">
+      <HintPath>..\..\..\LinqOptimizer\src\LinqOptimizer.CSharp\bin\Debug\LinqOptimizer.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="LinqOptimizer.CSharp, Version=0.5.2.29916, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\LinqOptimizer\src\LinqOptimizer.CSharp\bin\Debug\LinqOptimizer.CSharp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -96,6 +103,13 @@
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SolutionDir)\.nuget\NuGet.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\.nuget\NuGet.targets'))" />
+  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
