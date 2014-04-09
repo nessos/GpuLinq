@@ -45,12 +45,12 @@ namespace Algorithms
 
         protected const float limit = 4.0f;
 
-        Func<Tuple<int[], int[], float, float, float>, IEnumerable<Tuple<int, int, int>>>
+        Func<Tuple<float, float, float, float, float>, IEnumerable<Tuple<int, int, int>>>
             func =
-                Extensions.Compile<Tuple<int[], int[], float, float, float>, IEnumerable<Tuple<int, int, int>>>(
+                Extensions.Compile<Tuple<float, float, float, float, float>, IEnumerable<Tuple<int, int, int>>>(
                     t =>
-                        from yp in t.Item1.AsQueryExpr()
-                        from xp in t.Item2
+                        from yp in Enumerable.Range(0, (int)(((t.Item4 - t.Item3) / t.Item5) + .5f)).ToArray().AsQueryExpr()
+                        from xp in Enumerable.Range(0, (int)(((t.Item2 - t.Item1) / t.Item5) + .5f)).ToArray()
                         let _y = t.Item3 + t.Item5 * yp
                         let _x = t.Item4 + t.Item5 * xp
                         let c = new MyComplex(_x, _y)
@@ -62,11 +62,7 @@ namespace Algorithms
 
         public void RenderSingleThreadedWithLinq(float xmin, float xmax, float ymin, float ymax, float step)
         {  
-            var t = Tuple.Create(Enumerable.Range(0, (int)(((ymax - ymin) / step) + .5f)).ToArray(),
-                                 Enumerable.Range(0, (int)(((xmax - xmin) / step) + .5f)).ToArray(),
-                                 ymin,
-                                 xmin,
-                                 step);
+            var t = Tuple.Create(xmin, xmax, ymin, ymax, step);
             var result = func(t);
 
             //var query =
