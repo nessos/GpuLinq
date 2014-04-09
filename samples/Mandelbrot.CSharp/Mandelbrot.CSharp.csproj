@@ -54,11 +54,11 @@
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Interactive">
-      <HintPath>..\packages\Ix-Main.1.2.2\lib\net45\System.Interactive.dll</HintPath>
+      <HintPath>..\..\packages\Ix-Main.1.2.2\lib\net45\System.Interactive.dll</HintPath>
     </Reference>
     <Reference Include="System.Numerics" />
     <Reference Include="System.Numerics.Vectors">
-      <HintPath>..\packages\Microsoft.Bcl.Simd.1.0.1-beta\lib\portable-net45+win8\System.Numerics.Vectors.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Bcl.Simd.1.0.1-beta\lib\portable-net45+win8\System.Numerics.Vectors.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
