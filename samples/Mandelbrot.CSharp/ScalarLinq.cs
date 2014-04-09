@@ -52,9 +52,9 @@ namespace Algorithms
             int[] ys = Enumerable.Range(0, 312).ToArray();
             int[] xs = Enumerable.Range(0, 534).ToArray();
 
-            func = Extensions.Compile<float, float, float, IEnumerable<Triple>>(
+            func = Extensions.Compile<float, float, float, Triple[]>(
                     (_ymin, _xmin, _step) =>
-                        from yp in ys.AsQueryExpr()
+                        (from yp in ys.AsParallelQueryExpr()
                         from xp in xs
                         let _y = _ymin + _step * yp
                         let _x = _xmin + _step * xp
@@ -62,13 +62,13 @@ namespace Algorithms
                         let iters = EnumerableEx.Generate(c, x => x.SquareLength < limit, x => x * x + c, x => x)
                                                 .Take(max_iters)
                                                 .Count()
-                        select new Triple { X = xp, Y = yp, Step = iters }
+                        select new Triple { X = xp, Y = yp, Step = iters }).ToArray()
                     );
         }
 
         protected const float limit = 4.0f;
 
-        readonly Func<float, float, float, IEnumerable<Triple>> func;
+        readonly Func<float, float, float, Triple[]> func;
 
         public void RenderSingleThreadedWithLinq(float xmin, float xmax, float ymin, float ymax, float step)
         {
