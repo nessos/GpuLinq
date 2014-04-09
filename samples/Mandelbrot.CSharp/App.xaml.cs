@@ -18,13 +18,6 @@ namespace Mandelbrot
     /// </summary>
     public partial class App : Application
     {
-        // Goofy magic to get SIMD working with the CTP
-        // This will not be required once RyuJIT is official
-        // You must use the type in the class constructor
-        // It will not be accelerated in this function, though...
-        static Vector<float> dummy;
-        static App() { dummy = Vector<float>.One; }
-
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
