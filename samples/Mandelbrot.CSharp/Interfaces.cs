@@ -19,10 +19,17 @@ namespace Algorithms
 
         public bool Abort { get { return abort(); } }
 
-        public static Render SelectRender(Action<int, int, int> draw, Func<bool> abort, bool useVectorTypes, bool doublePrecision, bool isMultiThreaded, bool useAbstractDataType, bool dontUseIntTypes = true)
+        public static Render SelectRender(Action<int, int, int> draw, Func<bool> abort, bool sequentialLinqOpt, bool parallelLinqOpt)
         {
             var r = new ScalarLinqRenderer(draw, abort);
-            return r.RenderSingleThreadedWithLinq;
+
+            if (sequentialLinqOpt)
+                return r.RenderSingleThreadedWithLinq;
+            else if (parallelLinqOpt)
+                return r.RenderMultiThreadedWithLinq;
+            else
+                throw new InvalidOperationException("No renderer chosen.");
+            
             //if (useVectorTypes && doublePrecision)
             //{
             //    if (dontUseIntTypes)

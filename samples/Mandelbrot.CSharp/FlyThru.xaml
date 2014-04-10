@@ -54,8 +54,8 @@
                     <ColumnDefinition/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <CheckBox Content="SIMD" Grid.Column="0" VerticalAlignment="Center" IsChecked="{Binding UseSIMD, Mode=OneWayToSource}"/>
-                <CheckBox Content="Multi-threaded" Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding UseThreads,Mode=OneWayToSource}"/>
+                <CheckBox Name="seqCheck" Checked="seqCheck_Checked" Content="Sequential" Grid.Column="0" VerticalAlignment="Center" IsChecked="{Binding UseSeq, Mode=OneWayToSource}"/>
+                <CheckBox Name="parCheck" Checked="parCheck_Checked" Content="Multi-threaded" Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding UsePar,Mode=OneWayToSource}"/>
                 <Button x:Name="BeginButton" Content="Begin" Grid.Column="4" Click="Begin_Click"/>
                 <Label Content="Elapsed Time:" Grid.Column="2"/>
                 <TextBox DockPanel.Dock="Right" MinWidth="50" Text="{Binding ElapsedTime,Mode=OneWay}" IsReadOnly="True" HorizontalAlignment="Stretch" Grid.Column="3"/>

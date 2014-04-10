@@ -52,7 +52,7 @@ namespace Algorithms
             int[] ys = Enumerable.Range(0, 312).ToArray();
             int[] xs = Enumerable.Range(0, 534).ToArray();
 
-            func = Extensions.Compile<float, float, float, Triple[]>(
+            parFunc = ParallelExtensions.Compile<float, float, float, Triple[]>(
                     (_ymin, _xmin, _step) =>
                         (from yp in ys.AsParallelQueryExpr()
                         from xp in xs
@@ -64,16 +64,37 @@ namespace Algorithms
                                                 .Count()
                         select new Triple { X = xp, Y = yp, Step = iters }).ToArray()
                     );
+
+            seqFunc = Extensions.Compile<float, float, float, Triple[]>(
+                    (_ymin, _xmin, _step) =>
+                        (from yp in ys.AsQueryExpr()
+                         from xp in xs
+                         let _y = _ymin + _step * yp
+                         let _x = _xmin + _step * xp
+                         let c = new MyComplex(_x, _y)
+                         let iters = EnumerableEx.Generate(c, x => x.SquareLength < limit, x => x * x + c, x => x)
+                                                 .Take(max_iters)
+                                                 .Count()
+                         select new Triple { X = xp, Y = yp, Step = iters }).ToArray()
+                    );
         }
 
         protected const float limit = 4.0f;
 
-        readonly Func<float, float, float, Triple[]> func;
+        readonly Func<float, float, float, Triple[]> parFunc;
+        readonly Func<float, float, float, Triple[]> seqFunc;
+
+        public void RenderMultiThreadedWithLinq(float xmin, float xmax, float ymin, float ymax, float step)
+        {
+
+            var result = parFunc(ymin, xmin, step);
+            result.ForEach(m => DrawPixel(m.X, m.Y, m.Step));
+        }
 
         public void RenderSingleThreadedWithLinq(float xmin, float xmax, float ymin, float ymax, float step)
         {
 
-            var result = func(ymin, xmin, step);
+            var result = seqFunc(ymin, xmin, step);
             result.ForEach(m => DrawPixel(m.X, m.Y, m.Step));
 
             //var query =
