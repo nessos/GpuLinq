@@ -83,6 +83,31 @@ namespace Nessos.GpuLinq.CSharp
         }
 
         /// <summary>
+        /// Creates a query that projects each element of a sequence to an GpuArray, flattens the resulting sequences into one sequence, and invokes a result selector function on each element therein.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of source.</typeparam>
+        /// <typeparam name="TCol">The type of the intermediate elements collected by collectionSelector.</typeparam>
+        /// <typeparam name="TResult">The type of the elements of the sequence returned by selector.</typeparam>
+        /// <param name="query">A query whose values to project.</param>
+        /// <param name="collectionSelector">A transform function to apply to each element of the input sequence.</param>
+        /// <param name="resultSelector">A transform function to apply to each element of the intermediate sequence.</param>
+        /// <returns>A query whose elements are the result of invoking the one-to-many transform function on each element of the input sequence and the result selector function on each element therein.</returns>
+        public static IGpuQueryExpr<IGpuArray<TResult>> SelectMany<TSource, TCol, TResult>(this IGpuQueryExpr<IGpuArray<TSource>> query, Expression<Func<TSource, IGpuArray<TCol>>> collectionSelector, Expression<Func<TSource, TCol, TResult>> resultSelector)
+        {
+            var paramExpr = collectionSelector.Parameters.Single();
+            var bodyExpr = collectionSelector.Body;
+            if (bodyExpr.NodeType == ExpressionType.MemberAccess )
+            {
+                var nested = Tuple.Create(paramExpr, QueryExpr.NewSource((MemberExpression)bodyExpr, typeof(TCol), QueryExprType.Gpu));
+                return new GpuQueryExpr<IGpuArray<TResult>>(QueryExpr.NewNestedQueryTransform(nested, resultSelector, query.Expr));
+            }
+            else
+            { 
+                throw new InvalidOperationException("Not supported " + bodyExpr.ToString());
+            }
+        }
+
+        /// <summary>
         /// Creates a new query that filters a sequence of values based on a predicate.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of source.</typeparam>

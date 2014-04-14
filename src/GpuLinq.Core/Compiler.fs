@@ -24,6 +24,10 @@
         let byteType = typeof<byte>
         let boolType = typeof<bool>
         let gpuArrayTypeDef = typedefof<GpuArray<_>>
+        let igpuArrayTypeDef = typedefof<IGpuArray<_>>
+
+        let fieldToType (fieldInfo : System.Reflection.FieldInfo) = fieldInfo.FieldType
+             
 
         let breakLabel () = labelTarget "brk"
         let continueLabel () = labelTarget "cont"
@@ -241,6 +245,9 @@
                         let source = KernelTemplates.reduceTemplate headerStr sourceTypeStr argsStr resultTypeStr resultTypeStr varsStr (varExprToStr context.CurrentVarExpr vars) exprsStr (varExprToStr context.AccVarExpr vars) "0" "+"
                         { Source = source; ReductionType = context.ReductionType; SourceArgs = [| gpuArray |]; ValueArgs = valueArgs }
                     | _ -> failwithf "Not supported %A" context.ReductionType
+                | NestedQueryTransform ((_, Source (FieldMember (firstValue, (Map fieldToType (Named (TypeCheck igpuArrayTypeDef _, [|_|])) as fieldInfo)) as firstExpr, firstSourceType, QueryExprType.Gpu)), _, 
+                                            Source (Constant (secondValue, Named (TypeCheck gpuArrayTypeDef _, [|_|])) as secondExpr, secondSourceType, QueryExprType.Gpu)) ->
+                    raise <| new NotImplementedException()
                 | ZipWith ((Constant (first, Named (TypeCheck gpuArrayTypeDef _, [|_|])) as firstExpr), 
                             (Constant (second, Named (TypeCheck gpuArrayTypeDef _, [|_|])) as secondExpr), Lambda ([firstParamExpr; secondParamExpr], bodyExpr)) ->
                     let vars = context.VarExprs @ [firstParamExpr; secondParamExpr]
@@ -289,7 +296,7 @@
             let finalVarExpr = var "___final___" queryExpr.Type
             let flagVarExpr = var "___flag___" typeof<int>
             match queryExpr with
-            | Transform (_) ->
+            | Transform (_) | NestedQueryTransform (_) ->
                 let context = { CurrentVarExpr = finalVarExpr; AccVarExpr = finalVarExpr; FlagVarExpr = flagVarExpr;
                                 BreakLabel = breakLabel (); ContinueLabel = continueLabel (); 
                                 InitExprs = []; AccExpr = empty; CombinerExpr = empty; ResultType = queryExpr.Type; 

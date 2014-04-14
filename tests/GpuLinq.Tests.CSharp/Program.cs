@@ -29,47 +29,16 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
         public static void Main(string[] args)
         {
-
-            //var size = Marshal.SizeOf(typeof(bool));
-
-            //var xs = Enumerable.Range(1, 10000000).Select(x => x).ToArray();
-            //using (var context = new GpuContext())
-            //{
-
-            //    using (var _xs = context.CreateGpuArray(xs))
-            //    {
-            //        Expression<Func<int, int>> g = x => 2 * x;
-            //        Expression<Func<int, int>> f = x => 2 * g.Invoke(x);
-            //        var query = (from n in _xs.AsGpuQueryExpr()
-            //                     let x = f.Invoke(n)
-            //                     let y = g.Invoke(n)
-            //                     select (n % 2 == 0) ? 1 : 0).ToArray();
-
-            //        var gpuResult = context.Run(query);
-
-            //        var cpuResult =
-            //            (from n in xs
-            //             where n > 10
-            //             select (n % 2 == 0) ? 1 : 0).ToArray();
-
-            //        var result = gpuResult.SequenceEqual(cpuResult);
-            //    }
-            //}
-
-            //var x = (new GpuQueryTests()).MathFunctionsSingleTest(new int[] { 0 });;
-            //(new GpuQueryTests()).FunctionSplicingVariadic();
-
-
+            var xs = Enumerable.Range(1, 10).Select(x => x).ToArray();
+           
             using (var context = new GpuContext())
             {
-                using (var _xs = context.CreateGpuArray(new [] { 1,2 }))
+                using (var _xs = context.CreateGpuArray(xs))
                 {
-                    Expression<Func<int, int>> f1 = x => x;
-                    Expression<Func<int, int>> f2 = x => x - 1;
-                    Expression<Func<int, int>> f3 = x => f1.Invoke(x) + f1.Invoke(x) + f2.Invoke(x);
 
                     var query = (from x in _xs.AsGpuQueryExpr()
-                                 select f3.Invoke(x)).ToArray();
+                                 from _x in _xs
+                                 select x * _x).ToArray();
 
                     var gpuResult = context.Run(query);
 
