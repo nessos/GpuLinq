@@ -8,9 +8,10 @@
                             __kernel void kernelCode(__global %s* ___input___, %s __global %s* ___result___)
                             {
                                 %s
-                                %s = ___input___[get_global_id(0)];
+                                int ___id___ = get_global_id(0);
+                                %s = ___input___[___id___];
                                 %s
-                                ___result___[get_global_id(0)] = %s;
+                                ___result___[___id___] = %s;
                             }"
 
         let nestedMapTemplate = sprintf "%s
