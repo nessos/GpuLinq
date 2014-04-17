@@ -38,6 +38,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
                     var query = (from x in _xs.AsGpuQueryExpr()
                                  from _x in _xs
+                                 ///let test = x * _x
                                  select x * _x).ToArray();
 
                     var gpuResult = context.Run(query);

@@ -13,6 +13,21 @@
                                 ___result___[get_global_id(0)] = %s;
                             }"
 
+        let nestedMapTemplate = sprintf "%s
+                            __kernel void kernelCode(__global %s* ___input___, __global %s* ___nestedInput___,  %s int ___nestedInputLength___, __global %s* ___result___)
+                            {
+                                %s
+                                int ___id___ = get_global_id(0);
+                                %s = ___input___[___id___];
+                                int ___counter___ = ___id___ * ___nestedInputLength___;
+                                for (int ___indexer___ = 0; ___indexer___ < ___nestedInputLength___; ___indexer___++)
+                                {
+                                    %s = ___nestedInput___[___indexer___];
+                                    %s
+                                    ___result___[___counter___++] = %s;
+                                }
+                            }"
+
         let mapFilterTemplate = sprintf "%s
                         __kernel void kernelCode(__global %s* ___input___, %s __global int* ___flags___, __global %s* ___result___)
                         {

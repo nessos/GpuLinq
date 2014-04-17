@@ -222,6 +222,27 @@
 
             // Prepare query and execute 
             match compilerResult.ReductionType with
+            | ReductionType.NestedQueryTransform -> 
+                let input, nestedInput = compilerResult.SourceArgs.[0], compilerResult.SourceArgs.[1]
+                let gpuArray = 
+                    if input.Length = 0 then
+                        createGpuArray queryExpr.Type env input.Length null 
+                    else
+                        match Cl.SetKernelArg(kernel, (incr argIndex; uint32 !argIndex), new IntPtr(sizeof<int>), nestedInput.Length) with
+                        | ErrorCode.Success -> ()
+                        | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
+                        let outputBuffer = createBuffer queryExpr.Type env (input.Length * nestedInput.Length)
+                        addKernelBufferArg kernel outputBuffer argIndex
+                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
+                        | ErrorCode.Success, event ->
+                            use event = event
+                            createGpuArray queryExpr.Type env (input.Length * nestedInput.Length) outputBuffer 
+                        | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
+                match queryExpr with
+                | ToArray (_) -> 
+                    use gpuArray = gpuArray
+                    gpuArray.ToArray() :> obj :?> _
+                | _ -> gpuArray :> obj :?> _
             | ReductionType.Map -> 
                 let input = compilerResult.SourceArgs.[0]
                 let gpuArray = 
@@ -304,7 +325,7 @@
                             | t -> failwithf "Not supported result type %A" t
                         | error, _  -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                     | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
-            | reductionType -> failwith "Invalid ReductionType %A" reductionType
+            | reductionType -> failwithf "Invalid ReductionType %A" reductionType
 
 
         interface System.IDisposable with 

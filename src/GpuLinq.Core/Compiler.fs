@@ -92,7 +92,7 @@
                         match vars |> Seq.tryFind (fun varExpr -> varExpr.Name = expr.Member.Name) with
                         | Some varExpr -> varExprToStr varExpr vars
                         | None -> expr.Member.Name
-                    | AnonymousTypeAssign(_ , AnonymousTypeConstruction(members, args)) ->
+                    | AnonymousTypeAssign (_, AnonymousTypeConstruction (members, args)) ->
                         sprintf' "%s %s = %s" (typeToStr <| args.Last().Type) (members.Last().Name) (exprToStr <| args.Last() <| vars)
                     | FieldMember (expr, fieldMember) -> sprintf' "%s.%s" (exprToStr expr vars) fieldMember.Name
                     | MethodCall (objExpr, methodInfo, [argExpr]) when methodInfo.Name = "get_Item" ->
@@ -245,9 +245,37 @@
                         let source = KernelTemplates.reduceTemplate headerStr sourceTypeStr argsStr resultTypeStr resultTypeStr varsStr (varExprToStr context.CurrentVarExpr vars) exprsStr (varExprToStr context.AccVarExpr vars) "0" "+"
                         { Source = source; ReductionType = context.ReductionType; SourceArgs = [| gpuArray |]; ValueArgs = valueArgs }
                     | _ -> failwithf "Not supported %A" context.ReductionType
-                | NestedQueryTransform ((_, Source (FieldMember (firstValue, (Map fieldToType (Named (TypeCheck igpuArrayTypeDef _, [|_|])) as fieldInfo)) as firstExpr, firstSourceType, QueryExprType.Gpu)), _, 
-                                            Source (Constant (secondValue, Named (TypeCheck gpuArrayTypeDef _, [|_|])) as secondExpr, secondSourceType, QueryExprType.Gpu)) ->
-                    raise <| new NotImplementedException()
+                | NestedQueryTransform ((_, Source (FieldMember (_, (Map fieldToType (Named (TypeCheck igpuArrayTypeDef _, [|_|])) as fieldInfo)) as nestedExpr, nestedSourceType, QueryExprType.Gpu)), projectLambdaExpr, 
+                                            Source (Constant (value, Named (TypeCheck gpuArrayTypeDef _, [|_|])) as expr, sourceType, QueryExprType.Gpu)) ->
+                    let exprs, paramExprs, values = constantLifting context.Exprs
+                    let vars = Seq.append paramExprs context.VarExprs
+                    // Extract Nested GpuArray
+                    let _, _, [|nestedGpuArray|] = constantLifting ([nestedExpr])
+                    // EXtact projections
+                    let firstParamExpr, secondParamExpr, projectExpr = 
+                        match projectLambdaExpr with
+                        | Lambda ([firstParamExpr; secondParamExpr], AnonymousTypeConstruction (members, args)) -> 
+                            firstParamExpr, secondParamExpr, empty :> Expression
+                        | Lambda ([firstParamExpr; secondParamExpr], bodyExpr) -> firstParamExpr, secondParamExpr, bodyExpr
+                        | _ -> failwithf "Invalid state %A" projectLambdaExpr 
+                    let vars = Seq.append [|firstParamExpr; secondParamExpr|] vars
+                    let sourceTypeStr = typeToStr sourceType
+                    let nestedSourceTypeStr = typeToStr nestedSourceType
+                    let resultTypeStr = typeToStr context.ResultType
+                    let gpuArraySource = value :?> IGpuArray
+                    let sourceLength = gpuArraySource.Length
+                    let headerStr = headerStr (vars, paramExprs, values)
+                    let valueArgs = collectValueArgs (paramExprs, values) 
+                    let (exprsStr, varsStr) = bodyStr exprs vars
+                    let argsStr = argsToStr paramExprs vars
+                    
+                    match context.ReductionType with
+                    | ReductionType.NestedQueryTransform ->
+                        let source = KernelTemplates.nestedMapTemplate headerStr sourceTypeStr nestedSourceTypeStr argsStr resultTypeStr 
+                                        varsStr (varExprToStr firstParamExpr vars) (varExprToStr secondParamExpr vars) exprsStr  (exprToStr projectExpr vars)
+                        { Source = source; ReductionType = context.ReductionType; SourceArgs = [| gpuArraySource; nestedGpuArray :?> IGpuArray |]; ValueArgs = valueArgs }
+                    | _ -> failwithf "Not supported %A" context.ReductionType
+
                 | ZipWith ((Constant (first, Named (TypeCheck gpuArrayTypeDef _, [|_|])) as firstExpr), 
                             (Constant (second, Named (TypeCheck gpuArrayTypeDef _, [|_|])) as secondExpr), Lambda ([firstParamExpr; secondParamExpr], bodyExpr)) ->
                     let vars = context.VarExprs @ [firstParamExpr; secondParamExpr]
@@ -296,11 +324,17 @@
             let finalVarExpr = var "___final___" queryExpr.Type
             let flagVarExpr = var "___flag___" typeof<int>
             match queryExpr with
-            | Transform (_) | NestedQueryTransform (_) ->
+            | Transform (_) ->
                 let context = { CurrentVarExpr = finalVarExpr; AccVarExpr = finalVarExpr; FlagVarExpr = flagVarExpr;
                                 BreakLabel = breakLabel (); ContinueLabel = continueLabel (); 
                                 InitExprs = []; AccExpr = empty; CombinerExpr = empty; ResultType = queryExpr.Type; 
                                 VarExprs = [finalVarExpr; flagVarExpr]; Exprs = []; ReductionType = ReductionType.Map  }
+                compile' queryExpr context
+            | NestedQueryTransform (_) -> 
+                let context = { CurrentVarExpr = finalVarExpr; AccVarExpr = finalVarExpr; FlagVarExpr = flagVarExpr;
+                                BreakLabel = breakLabel (); ContinueLabel = continueLabel (); 
+                                InitExprs = []; AccExpr = empty; CombinerExpr = empty; ResultType = queryExpr.Type; 
+                                VarExprs = [finalVarExpr; flagVarExpr]; Exprs = []; ReductionType = ReductionType.NestedQueryTransform  }
                 compile' queryExpr context
             | Filter (_) ->
                 let context = { CurrentVarExpr = finalVarExpr; AccVarExpr = finalVarExpr; FlagVarExpr = flagVarExpr;
