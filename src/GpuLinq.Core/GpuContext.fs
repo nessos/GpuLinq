@@ -249,13 +249,28 @@
                     if input.Length = 0 then
                         createGpuArray queryExpr.Type env input.Length null 
                     else
-                        let outputBuffer = createBuffer queryExpr.Type env input.Length
-                        addKernelBufferArg kernel outputBuffer argIndex
-                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
-                        | ErrorCode.Success, event ->
-                            use event = event
-                            createGpuArray queryExpr.Type env input.Length outputBuffer 
-                        | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
+                        match compilerResult.SourceType with
+                        | Compiler.SingleSource | Compiler.Zip ->
+                            let outputBuffer = createBuffer queryExpr.Type env input.Length
+                            addKernelBufferArg kernel outputBuffer argIndex
+                            match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
+                            | ErrorCode.Success, event ->
+                                use event = event
+                                createGpuArray queryExpr.Type env input.Length outputBuffer 
+                            | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
+                        | Compiler.NestedSource ->
+                            let nestedInput = compilerResult.SourceArgs.[1]
+                            match Cl.SetKernelArg(kernel, (incr argIndex; uint32 !argIndex), new IntPtr(sizeof<int>), nestedInput.Length) with
+                            | ErrorCode.Success -> ()
+                            | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
+                            let outputBuffer = createBuffer queryExpr.Type env (input.Length * nestedInput.Length)
+                            addKernelBufferArg kernel outputBuffer argIndex
+                            match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
+                            | ErrorCode.Success, event ->
+                                use event = event
+                                createGpuArray queryExpr.Type env (input.Length * nestedInput.Length) outputBuffer 
+                            | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
+                        | _ -> failwithf "Not supported %A" compilerResult.SourceType
                 match queryExpr with
                 | ToArray (_) -> 
                     use gpuArray = gpuArray

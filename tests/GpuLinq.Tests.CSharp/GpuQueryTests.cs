@@ -609,6 +609,36 @@ namespace Nessos.GpuLinq.Tests.CSharp
             }
         }
 
+
+        [Test]
+        public void SelectManyWithLet()
+        {
+            using (var context = new GpuContext())
+            {
+                Spec.ForAny<int[]>(xs =>
+                {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
+
+                        var query = (from x in _xs.AsGpuQueryExpr()
+                                     from _x in _xs
+                                     let test = x * _x
+                                     select test + 1).ToArray();
+
+                        var gpuResult = context.Run(query);
+
+
+                        var cpuResult = (from x in xs
+                                         from _x in xs
+                                         let test = x * _x
+                                         select test + 1).ToArray();
+
+                        return gpuResult.SequenceEqual(cpuResult);
+                    }
+                }).QuickCheckThrowOnFailure();
+            }
+        }
+
         #region Helpers
         OpenCL.Net.Environment env = "*".CreateCLEnvironment();
 
