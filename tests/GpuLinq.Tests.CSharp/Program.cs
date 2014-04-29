@@ -52,7 +52,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
                     }
                 }
-            }            
+            }
 
         }
 

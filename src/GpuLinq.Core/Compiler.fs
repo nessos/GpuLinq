@@ -57,8 +57,9 @@
                     | _ -> failwithf "Not supported %A" t
 
                 let varExprToStr (varExpr : ParameterExpression) (vars : seq<ParameterExpression>) = 
-                    let index = vars |> Seq.findIndex (fun varExpr' -> varExpr = varExpr')
-                    sprintf' "%s%d" (varExpr.ToString()) index
+                    match vars |> Seq.tryFindIndex (fun varExpr' -> varExpr = varExpr') with
+                    | Some index -> sprintf' "%s%d" (varExpr.ToString()) index
+                    | None -> varExpr.Name
                 let constantLifting (exprs : Expression list) = 
                     match exprs with
                     | [] -> ([||], [||], [||])
