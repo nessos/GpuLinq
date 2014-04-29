@@ -135,7 +135,12 @@
                         sprintf' "fabs(%s)" (exprToStr argExpr vars)
                     // Inner Enumerable Methods
                     | MethodCall (_, MethodName "Count" _,  [expr']) when isValidQueryExpr expr' ->
-                        raise <| new NotImplementedException()
+                        let freeVars = FreeVariablesVisitor.get expr
+                        let argsStr = 
+                            freeVars
+                            |> Seq.map (fun paramExpr -> varExprToStr paramExpr vars)
+                            |> String.concat ", "
+                        sprintf' "(func%d(%s))" (expr.GetHashCode()) argsStr
                     | MethodCall (_, MethodName "Sum" _,  [expr']) when isValidQueryExpr expr' ->
                         raise <| new NotImplementedException()
                     // Expr Call
