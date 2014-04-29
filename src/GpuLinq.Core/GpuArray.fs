@@ -16,7 +16,9 @@
         abstract member GetBuffer : unit -> IMem
         abstract member ToArray : unit -> Array
         abstract member Refresh : unit -> unit
+        abstract member Refresh : int -> unit
         abstract member Flash : unit -> unit
+        abstract member Flash : int -> unit
 
     /// <summary>
     /// A typed interface for managing GPU Buffers
@@ -55,7 +57,9 @@
             member self.GetArray () = array
             member this.Item with get(index) = array.[index]
             member self.Refresh () = env.CommandQueues.[0].ReadFromBuffer(buffer, array, 0, int64 array.Length)
+            member self.Refresh n = env.CommandQueues.[0].ReadFromBuffer(buffer, array, 0, int64 n)
             member self.Flash () = env.CommandQueues.[0].WriteToBuffer(buffer, array, 0, int64 array.Length)
+            member self.Flash n = env.CommandQueues.[0].WriteToBuffer(buffer, array, 0, int64 n)
         interface System.IDisposable with 
             member this.Dispose() = 
                 if buffer <> null && disposed = false then

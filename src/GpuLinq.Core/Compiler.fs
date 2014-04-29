@@ -85,6 +85,19 @@
                     let argParamExprs = argParamExprs |> Array.filter (fun paramExpr -> not <| typeof<Expression>.IsAssignableFrom(paramExpr.Type))
                     (argParamExprs, "") 
                     ||> Array.foldBack (fun paramExpr result -> sprintf' "%s %s, %s" (typeToStr paramExpr.Type) (varExprToStr paramExpr paramExprs) result) 
+                let rec isValidQueryExpr (expr : Expression) = 
+                    match expr with
+                    | MethodCall (_, MethodName "Select" _, [expr'; LambdaOrQuote ([_], bodyExpr, f')]) -> 
+                        isValidQueryExpr expr'
+                    | MethodCall (_, MethodName "Where" _, [expr'; LambdaOrQuote ([paramExpr], _, f')]) -> 
+                        isValidQueryExpr expr'
+                    | MethodCall (_, MethodName "Take" _, [expr'; countExpr]) when countExpr.Type = typeof<int> -> 
+                        isValidQueryExpr expr'
+                    | MethodCall (_, MethodName "Skip" _, [expr'; countExpr]) when countExpr.Type = typeof<int> -> 
+                        isValidQueryExpr expr'
+                    | MethodCall (_, MethodName "Generate" _, [startExpr; Lambda (_,_) as pred; LambdaOrQuote(_,_,state); LambdaOrQuote(_,_,result)]) ->
+                        true
+                    | _ -> false
 
                 let rec exprToStr (expr : Expression) (vars : seq<ParameterExpression>) =
                     match expr with
@@ -120,7 +133,11 @@
                     | MethodCall (objExpr, methodInfo, [argExpr]) when methodInfo.Name = "Abs" && 
                         (methodInfo.ReturnType = typeof<double> || methodInfo.ReturnType = typeof<Single>) ->
                         sprintf' "fabs(%s)" (exprToStr argExpr vars)
-
+                    // Inner Enumerable Methods
+                    | MethodCall (_, MethodName "Count" _,  [expr']) when isValidQueryExpr expr' ->
+                        raise <| new NotImplementedException()
+                    | MethodCall (_, MethodName "Sum" _,  [expr']) when isValidQueryExpr expr' ->
+                        raise <| new NotImplementedException()
                     // Expr Call
                     | GpuFunctionInvoke(funcExpr, args) when args.Length >= 1 ->
                         let paramsString =

@@ -21,30 +21,37 @@ namespace Nessos.GpuLinq.Tests.CSharp
     public class Program
     {
         [StructLayout(LayoutKind.Sequential)]
-        public struct Complex
+        public struct Pair
         {
-            public double A;
-            public double B;
+            public float A;
+            public float B;
         }
 
         public static void Main(string[] args)
         {
-            var xs = Enumerable.Range(1, 10).Select(x => x).ToArray();
-           
-            using (var context = new GpuContext())
-            {
-                using (var _xs = context.CreateGpuArray(xs))
-                {
+            //{
+            //    var xs = Enumerable.Range(1, 1000).Select(x => (float)x).ToArray();
+                
 
-                    var query = (from x in _xs.AsGpuQueryExpr()
-                                 from _x in _xs
-                                 let test = x * _x
-                                 select test + 1).ToArray();
+            //    using (var context = new GpuContext())
+            //    {
+            //        using (var _xs = context.CreateGpuArray(xs))
+            //        {
+                       
 
-                    var gpuResult = context.Run(query);
+            //                var query = (from x in _xs.AsGpuQueryExpr()
+            //                             let test = EnumerableEx.Generate(1, i => i < 100, i => i + 1, i => i)
+            //                                            .Take(10)
+            //                                            .Count()
+            //                             select test + 1).ToArray();
 
-                }
-            }
+
+            //                Measure(() => context.Run(query));
+                            
+                            
+            //            }
+            //        }
+            //    }            
 
         }
 

@@ -30,6 +30,10 @@
         let env = "*".CreateCLEnvironment()
         let cache = Dictionary<string, (Program * Kernel)>()
         let buffers = new System.Collections.Generic.List<IGpuArray>()
+        let maxGroupSize = 
+                        match Cl.GetDeviceInfo(env.Devices.[0], DeviceInfo.MaxWorkGroupSize) with
+                        | info, ErrorCode.Success -> info.CastTo<int>()
+                        | _, error -> failwithf "OpenCL.GetDeviceInfo failed with error code %A" error
         
         let compileOptionsToString (options : GpuCompileOptions) =
             let sb = new Text.StringBuilder()
@@ -49,18 +53,18 @@
             | inputBuffer, ErrorCode.Success -> inputBuffer
             | _, error -> failwithf "OpenCL.CreateBuffer failed with error code %A" error 
                 
-        let createGpuArray (t : Type) (env : Environment) (length : int) (buffer : IMem) = 
+        let createGpuArray (t : Type) (env : Environment) (length : int) (capacity : int) (buffer : IMem) = 
             let gpuArray : IGpuArray = 
                 match t with
                 | TypeCheck Compiler.intType _ -> 
-                    new GpuArray<int>(env, length, length, Marshal.SizeOf(t), buffer) :> _
+                    new GpuArray<int>(env, length, capacity, Marshal.SizeOf(t), buffer) :> _
                 | TypeCheck Compiler.floatType _ ->  
-                    new GpuArray<single>(env, length, length, Marshal.SizeOf(t), buffer) :> _
+                    new GpuArray<single>(env, length, capacity, Marshal.SizeOf(t), buffer) :> _
                 | TypeCheck Compiler.doubleType _ ->  
-                    new GpuArray<double>(env, length, length, Marshal.SizeOf(t), buffer) :> _
+                    new GpuArray<double>(env, length, capacity, Marshal.SizeOf(t), buffer) :> _
                 | _ when t.IsValueType -> 
                     Activator.CreateInstance(typedefof<GpuArray<_>>.MakeGenericType [| t |], 
-                                                [|env :> obj; length :> obj; length :> obj; Marshal.SizeOf(t) :> obj; buffer :> obj|]) :?> _
+                                                [|env :> obj; length :> obj; capacity :> obj; Marshal.SizeOf(t) :> obj; buffer :> obj|]) :?> _
                 | _ -> failwithf "Not supported result type %A" t
             buffers.Add(gpuArray)
             gpuArray
@@ -166,12 +170,13 @@
             if array.Length = 0 then
                 new GpuArray<'T>(env, 0, 0, sizeof<'T>, null) :> _
             else
-                let capacity = int <| 2.0 ** Math.Ceiling(Math.Log(float array.Length, 2.0))
+                let capacity = if array.Length < maxGroupSize then maxGroupSize 
+                               else int <| 2.0 ** Math.Ceiling(Math.Log(float array.Length, 2.0))
                 let array' = Array.CreateInstance(typeof<'T>, capacity)
                 Array.Copy(array, array', array.Length)
                 match Cl.CreateBuffer(env.Context, MemFlags.ReadWrite ||| MemFlags.None ||| MemFlags.CopyHostPtr, new IntPtr(capacity * sizeof<'T>), array') with
                 | inputBuffer, ErrorCode.Success -> 
-                    let gpuArray = new GpuArray<'T>(env, array.Length, capacity, sizeof<'T>, inputBuffer) 
+                    let gpuArray = new GpuArray<'T>(array, env, array.Length, capacity, sizeof<'T>, inputBuffer) 
                     buffers.Add(gpuArray)
                     gpuArray :> _
                 | _, error -> failwithf "OpenCL.CreateBuffer failed with error code %A" error 
@@ -198,10 +203,10 @@
                     ()
                 else
                     addKernelBufferArg kernel (outputGpuArray.GetBuffer())  argIndex
-                    match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
+                    match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                     | ErrorCode.Success, event ->
                         use event = event
-                        ()
+                        env.CommandQueues.[0].Finish() |> ignore
                     | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
             | reductionType -> failwith "Invalid ReductionType %A" reductionType
 
@@ -226,17 +231,17 @@
                 let input, nestedInput = compilerResult.SourceArgs.[0], compilerResult.SourceArgs.[1]
                 let gpuArray = 
                     if input.Length = 0 then
-                        createGpuArray queryExpr.Type env input.Length null 
+                        createGpuArray queryExpr.Type env input.Length input.Capacity null 
                     else
                         match Cl.SetKernelArg(kernel, (incr argIndex; uint32 !argIndex), new IntPtr(sizeof<int>), nestedInput.Length) with
                         | ErrorCode.Success -> ()
                         | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
                         let outputBuffer = createBuffer queryExpr.Type env (input.Length * nestedInput.Length)
                         addKernelBufferArg kernel outputBuffer argIndex
-                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
+                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                         | ErrorCode.Success, event ->
                             use event = event
-                            createGpuArray queryExpr.Type env (input.Length * nestedInput.Length) outputBuffer 
+                            createGpuArray queryExpr.Type env (input.Length * nestedInput.Length) (input.Capacity * nestedInput.Capacity) outputBuffer 
                         | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                 match queryExpr with
                 | ToArray (_) -> 
@@ -247,28 +252,28 @@
                 let input = compilerResult.SourceArgs.[0]
                 let gpuArray = 
                     if input.Length = 0 then
-                        createGpuArray queryExpr.Type env input.Length null 
+                        createGpuArray queryExpr.Type env input.Length input.Capacity null 
                     else
                         match compilerResult.SourceType with
                         | Compiler.SingleSource | Compiler.Zip ->
-                            let outputBuffer = createBuffer queryExpr.Type env input.Length
+                            let outputBuffer = createBuffer queryExpr.Type env input.Capacity
                             addKernelBufferArg kernel outputBuffer argIndex
-                            match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
+                            match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                             | ErrorCode.Success, event ->
                                 use event = event
-                                createGpuArray queryExpr.Type env input.Length outputBuffer 
+                                createGpuArray queryExpr.Type env input.Length input.Capacity outputBuffer 
                             | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                         | Compiler.NestedSource ->
                             let nestedInput = compilerResult.SourceArgs.[1]
                             match Cl.SetKernelArg(kernel, (incr argIndex; uint32 !argIndex), new IntPtr(sizeof<int>), nestedInput.Length) with
                             | ErrorCode.Success -> ()
                             | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
-                            let outputBuffer = createBuffer queryExpr.Type env (input.Length * nestedInput.Length)
+                            let outputBuffer = createBuffer queryExpr.Type env (input.Capacity * nestedInput.Capacity)
                             addKernelBufferArg kernel outputBuffer argIndex
-                            match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
+                            match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                             | ErrorCode.Success, event ->
                                 use event = event
-                                createGpuArray queryExpr.Type env (input.Length * nestedInput.Length) outputBuffer 
+                                createGpuArray queryExpr.Type env (input.Length * nestedInput.Length) (input.Capacity * nestedInput.Capacity) outputBuffer 
                             | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                         | _ -> failwithf "Not supported %A" compilerResult.SourceType
                 match queryExpr with
@@ -280,15 +285,15 @@
                 let input = compilerResult.SourceArgs.[0]
                 let gpuArray = 
                     if input.Length = 0 then
-                        createGpuArray queryExpr.Type env input.Length null 
+                        createGpuArray queryExpr.Type env input.Length input.Capacity null 
                     else
                         let output = Array.CreateInstance(queryExpr.Type, input.Length)
-                        use outputBuffer = createBuffer queryExpr.Type env input.Length
+                        use outputBuffer = createBuffer queryExpr.Type env input.Capacity
                         let flags = Array.CreateInstance(typeof<int>, input.Length)
-                        use flagsBuffer = createBuffer typeof<int> env input.Length
+                        use flagsBuffer = createBuffer typeof<int> env input.Capacity
                         addKernelBufferArg kernel flagsBuffer argIndex
                         addKernelBufferArg kernel outputBuffer argIndex
-                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(1) |], uint32 0, null) with
+                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                         | ErrorCode.Success, event ->
                             use event = event
                             readFromBuffer env.CommandQueues.[0] typeof<int> flagsBuffer flags
@@ -296,7 +301,7 @@
                             let result = createDynamicArray queryExpr.Type (flags :?> int[]) output
                             match Cl.CreateBuffer(env.Context, MemFlags.ReadWrite ||| MemFlags.None ||| MemFlags.UseHostPtr, new IntPtr(input.Length * input.Size), result) with
                             | resultBuffer, ErrorCode.Success -> 
-                                createGpuArray queryExpr.Type env result.Length resultBuffer 
+                                createGpuArray queryExpr.Type env result.Length input.Capacity resultBuffer 
                             | _, error -> failwithf "OpenCL.CreateBuffer failed with error code %A" error 
                         | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                 match queryExpr with
@@ -309,10 +314,6 @@
                 if gpuArray.Length = 0 then
                     0 :> obj :?> _
                 else
-                    let maxGroupSize = 
-                        match Cl.GetDeviceInfo(env.Devices.[0], DeviceInfo.MaxWorkGroupSize) with
-                        | info, ErrorCode.Success -> info.CastTo<int>()
-                        | _, error -> failwithf "OpenCL.GetDeviceInfo failed with error code %A" error
 
                     let (maxGroupSize, outputLength) = if gpuArray.Capacity < maxGroupSize then (gpuArray.Capacity, 1)
                                                        else (maxGroupSize, gpuArray.Capacity / maxGroupSize)
