@@ -42,10 +42,11 @@ type private QuerySubExprVisitor (isValidQueryExpr : Expression -> bool) =
 
     
 module QuerySubExpression =
-    let get (isValidQueryExpr : Expression -> bool) (expr : Expression)  = 
+    let get (isValidQueryExpr : Expression -> bool) (exprs : Expression list)  = 
         let qsv = new QuerySubExprVisitor(isValidQueryExpr)
-        qsv.Visit(expr) |> ignore
-        let exprs = qsv.GetSubExprs()
+        let exprs = 
+            exprs 
+            |> Seq.collect (fun expr -> qsv.Visit(expr) |> ignore; qsv.GetSubExprs())        
         exprs
         |> Seq.toList
         |> List.map(fun se ->
@@ -53,6 +54,7 @@ module QuerySubExpression =
                 let (e, param) = FreeVariablesVisitor.getWithExpr(ce)
                 let fExpr = Expression.Lambda(e, param)
                 Expression.Parameter(fExpr.ReturnType, sprintf "func%d" (se.GetHashCode())), fExpr :> obj)
+        |> List.unzip
 
 
 //        match se with 

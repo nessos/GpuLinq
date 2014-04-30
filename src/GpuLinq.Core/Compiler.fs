@@ -255,9 +255,7 @@
                     let sourceLength = gpuArraySource.Length
                     let exprs, paramExprs, values = constantLifting context.Exprs
                     
-                    let bodies = context.Exprs |> List.map (QuerySubExpression.get isValidQueryExpr)
-                                               |> List.concat
-                                               |> List.unzip
+                    let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr context.Exprs 
 
                     let vars = Seq.append paramExprs context.VarExprs
                     let headerStr = headerStr (vars, paramExprs, values)
