@@ -96,6 +96,8 @@
                         isValidQueryExpr expr'
                     | MethodCall (_, MethodName "Skip" _, [expr'; countExpr]) when countExpr.Type = typeof<int> -> 
                         isValidQueryExpr expr'
+                    | MethodCall (_, MethodName "Count" _, [expr']) -> 
+                        isValidQueryExpr expr'
                     | MethodCall (_, MethodName "Generate" _, [startExpr; Lambda (_,_) as pred; LambdaOrQuote(_,_,state); LambdaOrQuote(_,_,result)]) ->
                         true
                     | _ -> false
@@ -252,6 +254,11 @@
                     let gpuArraySource = value :?> IGpuArray
                     let sourceLength = gpuArraySource.Length
                     let exprs, paramExprs, values = constantLifting context.Exprs
+                    
+                    let bodies = context.Exprs |> List.map (QuerySubExpression.get isValidQueryExpr)
+                                               |> List.concat
+                                               |> List.unzip
+
                     let vars = Seq.append paramExprs context.VarExprs
                     let headerStr = headerStr (vars, paramExprs, values)
                     let valueArgs = collectValueArgs (paramExprs, values) 
