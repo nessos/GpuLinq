@@ -51,6 +51,7 @@
     <Compile Include="KernelTemplates.fs" />
     <Compile Include="GpuArray.fs" />
     <Compile Include="GpuFunctionDependencyAnalysis.fs" />
+    <Compile Include="QuerySubExpressionVisitor.fs" />
     <Compile Include="Compiler.fs" />
     <Compile Include="GpuContext.fs" />
     <None Include="packages.config" />

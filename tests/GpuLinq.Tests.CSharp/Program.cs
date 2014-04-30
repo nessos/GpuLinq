@@ -43,7 +43,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
                                      let y = x
                                      let test = EnumerableEx.Generate(1, i => i < y, i => i + 1, i => i)
                                                     .Take(10)
-                                                    .Count()
+                                                    .Count() + 1
                                      select test + 1).ToArray();
 
 
