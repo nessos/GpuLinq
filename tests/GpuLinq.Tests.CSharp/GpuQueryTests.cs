@@ -532,6 +532,39 @@ namespace Nessos.GpuLinq.Tests.CSharp
             }
         }
 
+        [Test]
+        public void InnerEnumerablePipeline()
+        {
+            using (var context = new GpuContext())
+            {
+                Spec.ForAny<int[]>(xs =>
+                {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
+
+                        var query = (from x in _xs.AsGpuQueryExpr()
+                                     let y = x
+                                     let test = EnumerableEx.Generate(1, i => i < y, i => i + 1, i => i)
+                                                    .Take(10)
+                                                    .Count()
+                                     select test + 1).ToArray();
+
+                        var gpuResult = context.Run(query);
+
+
+                        var cpuResult = (from x in xs
+                                         let y = x
+                                         let test = EnumerableEx.Generate(1, i => i < y, i => i + 1, i => i)
+                                                    .Take(10)
+                                                    .Count()
+                                         select test + 1).ToArray();;
+
+                        return gpuResult.SequenceEqual(cpuResult);
+                    }
+                }).QuickCheckThrowOnFailure();
+            }
+        }
+
         #region Helpers
         OpenCL.Net.Environment env = "*".CreateCLEnvironment();
 
