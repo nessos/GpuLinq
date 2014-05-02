@@ -57,9 +57,20 @@
                     | _ -> failwithf "Not supported %A" t
 
                 let varExprToStr (varExpr : ParameterExpression) (vars : seq<ParameterExpression>) = 
-                    match vars |> Seq.tryFindIndex (fun varExpr' -> varExpr = varExpr') with
-                    | Some index -> sprintf' "%s%d" (varExpr.ToString()) index
-                    | None -> varExpr.Name
+                    match vars |> List.ofSeq |> List.filter (fun varExpr' -> varExpr.Name = varExpr'.Name) with
+                    | [] -> varExpr.Name
+                    | vars' -> 
+                        let index = vars' |> List.findIndex (fun varExpr' -> varExpr = varExpr')
+                        sprintf' "%s%d" (varExpr.ToString()) index
+                    
+                let varsToStr (vars : seq<ParameterExpression>) = 
+                    let varsStr = 
+                        vars
+                        |> Seq.filter (fun varExpr -> not (varExpr.Name.StartsWith("___param")))
+                        |> Seq.filter (fun varExpr -> not (isAnonymousType varExpr.Type))
+                        |> Seq.map (fun varExpr -> sprintf' "%s %s;" (typeToStr varExpr.Type) (varExprToStr varExpr vars)) 
+                        |> Seq.fold (fun first second -> sprintf' "%s%s%s" first Environment.NewLine second) "" 
+                    varsStr
                 let constantLifting (exprs : Expression list) = 
                     match exprs with
                     | [] -> ([||], [||], [||])
@@ -162,6 +173,7 @@
                     | Constant (value, TypeCheck boolType _) -> sprintf' "%A" value
                     | Parameter (paramExpr) -> varExprToStr paramExpr vars
                     | Assign (Parameter (paramExpr), expr') -> sprintf' "%s = %s" (varExprToStr paramExpr vars) (exprToStr expr' vars)
+                    | AddAssign (Parameter (paramExpr), expr') -> sprintf' "%s += %s" (varExprToStr paramExpr vars) (exprToStr expr' vars)
                     | Plus (leftExpr, rightExpr) -> sprintf' "(%s + %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
                     | Subtract (leftExpr, rightExpr) -> sprintf' "(%s - %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
                     | Times (leftExpr, rightExpr) -> sprintf' "(%s * %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
@@ -175,15 +187,39 @@
                     | LessThan (leftExpr, rightExpr) -> sprintf' "(%s < %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
                     | LessThanOrEqual (leftExpr, rightExpr) -> sprintf' "(%s <= %s)" (exprToStr leftExpr vars) (exprToStr rightExpr vars)
                     | IfThenElse (testExpr, thenExpr, elseExpr) -> 
-                        if thenExpr.NodeType = ExpressionType.Block && elseExpr.NodeType = ExpressionType.Block then
-                            sprintf' "if (%s) { %s; } else { %s; }" (exprToStr testExpr vars) (exprToStr thenExpr vars) (exprToStr elseExpr vars)
-                        else
+                        match thenExpr.NodeType, elseExpr.NodeType with
+                        | (ExpressionType.Block | ExpressionType.Goto | ExpressionType.Default), (ExpressionType.Block | ExpressionType.Goto | ExpressionType.Default) ->
+                            sprintf' "if (%s) 
+                                      { 
+                                          %s; 
+                                      } 
+                                      else 
+                                      { 
+                                          %s; 
+                                      }" (exprToStr testExpr vars) (exprToStr thenExpr vars) (exprToStr elseExpr vars)
+                        | _ ->
                             sprintf' "((%s) ? %s : %s)" (exprToStr testExpr vars) (exprToStr thenExpr vars) (exprToStr elseExpr vars)
-                    | Goto (kind, target, value) when kind = GotoExpressionKind.Continue -> sprintf' "goto %s" target.Name 
-                    | Block (_, exprs, _) -> 
-                        exprs
-                            |> Seq.map (fun expr -> sprintf' "%s" (exprToStr expr vars))
-                            |> Seq.reduce (fun first second -> sprintf' "%s;%s%s" first Environment.NewLine second)
+                    | Goto (kind, target, value) when kind = GotoExpressionKind.Goto -> 
+                        sprintf' "goto %s" target.Name 
+                    | Goto (kind, target, value) when kind = GotoExpressionKind.Continue -> 
+                        "continue" 
+                    | Goto (kind, target, value) when kind = GotoExpressionKind.Break -> 
+                        "break" 
+                    | Block (paramExprs, exprs, resultExpr) -> 
+                        let vars = Seq.append vars paramExprs
+                        let varsStr = varsToStr paramExprs
+                        let exprsStr = 
+                            exprs
+                                |> Seq.map (fun expr -> sprintf' "%s" (exprToStr expr vars))
+                                |> Seq.reduce (fun first second -> sprintf' "%s;
+                                                                             %s" first second)
+                        sprintf' "%s
+                                  %s" varsStr exprsStr
+                    | Loop (bodyExpr, breakLabel, continueLabel) ->
+                        sprintf' "while(true) 
+                                  {
+                                    %s;
+                                  }" (exprToStr bodyExpr vars)
                     | Convert (expr, t) -> sprintf' "((%s) %s)" (typeToStr t) (exprToStr expr vars)
                     | Nop _ -> ""
                     | _ -> failwithf "Not supported %A" expr
@@ -214,14 +250,32 @@
                     let ordered = GpuFunctionDependencyAnalysis.sort(funcs)
                     let funcsStr = ordered
                                    |> Array.map(fun (paramExpr, varExprs, (expr, paramExprs, objs)) ->
-                                                    let exprStr = exprToStr expr varExprs
-                                                    let parameterStr = varExprs 
-                                                                       |> List.map (fun varExpr -> 
-                                                                            sprintf' "%s %s" (typeToStr varExpr.Type) (varExprToStr varExpr varExprs))
-                                                                       |> List.reduce (sprintf' "%s, %s")
-                                                    let funcStr = sprintf' "inline %s %s(%s) { return %s; }%s " 
-                                                                    (typeToStr expr.Type) paramExpr.Name parameterStr exprStr Environment.NewLine
-                                                    funcStr)
+
+                                                    match expr with
+                                                    | Block (blockVars, exprs, Parameter resultParamExpr) -> 
+                                                        let parameterStr = varExprs 
+                                                                           |> Seq.map (fun varExpr -> 
+                                                                                sprintf' "%s %s" (typeToStr varExpr.Type) (varExprToStr varExpr varExprs))
+                                                                           |> Seq.reduce (sprintf' "%s, %s")
+                                                        let varExprs = Seq.append varExprs blockVars 
+                                                        let exprStr = exprToStr expr varExprs
+                                                        let funcStr = sprintf' "inline %s %s(%s) 
+                                                                                { 
+                                                                                    %s; 
+                                                                                    return %s;
+                                                                                }%s" 
+                                                                        (typeToStr expr.Type) paramExpr.Name parameterStr exprStr 
+                                                                        (varExprToStr resultParamExpr varExprs) Environment.NewLine
+                                                        funcStr
+                                                    | _ ->                                                     
+                                                        let exprStr = exprToStr expr varExprs
+                                                        let parameterStr = varExprs 
+                                                                           |> Seq.map (fun varExpr -> 
+                                                                                sprintf' "%s %s" (typeToStr varExpr.Type) (varExprToStr varExpr varExprs))
+                                                                           |> Seq.reduce (sprintf' "%s, %s")
+                                                        let funcStr = sprintf' "inline %s %s(%s) { return %s; }%s " 
+                                                                        (typeToStr expr.Type) paramExpr.Name parameterStr exprStr Environment.NewLine
+                                                        funcStr)
                     let collect = funcsStr |> String.concat Environment.NewLine
                     collect
 
@@ -234,11 +288,7 @@
                     let exprsStr = exprs
                                        |> Seq.map (fun expr -> sprintf' "%s;" (exprToStr expr vars))
                                        |> Seq.fold (fun first second -> sprintf' "%s%s%s" first Environment.NewLine second) ""
-                    let varsStr = vars
-                                      |> Seq.filter (fun varExpr -> not (varExpr.Name.StartsWith("___param")))
-                                      |> Seq.filter (fun varExpr -> not (isAnonymousType varExpr.Type))
-                                      |> Seq.map (fun varExpr -> sprintf' "%s %s;" (typeToStr varExpr.Type) (varExprToStr varExpr vars)) 
-                                      |> Seq.fold (fun first second -> sprintf' "%s%s%s" first Environment.NewLine second) "" 
+                    let varsStr = varsToStr vars
                     (exprsStr, varsStr)
 
                 let collectValueArgs (paramExprs : ParameterExpression[], values : obj[]) = 
@@ -254,11 +304,9 @@
                     let gpuArraySource = value :?> IGpuArray
                     let sourceLength = gpuArraySource.Length
                     let exprs, paramExprs, values = constantLifting context.Exprs
-                    
                     let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr context.Exprs 
-
                     let vars = Seq.append paramExprs context.VarExprs
-                    let headerStr = headerStr (vars, paramExprs, values)
+                    let headerStr = headerStr (vars, (Array.append paramExprs paramExprs'), (Array.append values values'))
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
@@ -347,10 +395,10 @@
                 | Filter (Lambda ([paramExpr], bodyExpr), queryExpr') ->
                     match context.ReductionType with
                     | ReductionType.Map | ReductionType.Filter ->
-                        let exprs' = (ifThenElse bodyExpr (block [] [assign context.FlagVarExpr (constant 0)]) (block [] [assign context.FlagVarExpr (constant 1); (``continue`` context.ContinueLabel)])) :: assign context.CurrentVarExpr paramExpr :: context.Exprs
+                        let exprs' = (ifThenElse bodyExpr (block [] [assign context.FlagVarExpr (constant 0)]) (block [] [assign context.FlagVarExpr (constant 1); (goto context.ContinueLabel)])) :: assign context.CurrentVarExpr paramExpr :: context.Exprs
                         compile' queryExpr' { context with CurrentVarExpr = paramExpr; VarExprs = paramExpr :: context.VarExprs; Exprs = exprs'; ReductionType = ReductionType.Filter } 
                     | _ ->
-                        let exprs' = (ifThenElse bodyExpr (block [] [empty]) (block [] [``continue`` context.ContinueLabel])) :: assign context.CurrentVarExpr paramExpr :: context.Exprs
+                        let exprs' = (ifThenElse bodyExpr (block [] [empty]) (block [] [goto context.ContinueLabel])) :: assign context.CurrentVarExpr paramExpr :: context.Exprs
                         compile' queryExpr' { context with CurrentVarExpr = paramExpr; VarExprs = paramExpr :: context.VarExprs; Exprs = exprs' } 
                 | _ -> failwithf "Not supported %A" queryExpr 
 

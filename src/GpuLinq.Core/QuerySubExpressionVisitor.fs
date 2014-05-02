@@ -43,18 +43,22 @@ type private QuerySubExprVisitor (isValidQueryExpr : Expression -> bool) =
     
 module QuerySubExpression =
     let get (isValidQueryExpr : Expression -> bool) (exprs : Expression list)  = 
-        let qsv = new QuerySubExprVisitor(isValidQueryExpr)
-        let exprs = 
+        let subExprs = 
             exprs 
-            |> Seq.collect (fun expr -> qsv.Visit(expr) |> ignore; qsv.GetSubExprs())        
-        exprs
-        |> Seq.toList
-        |> List.map(fun se ->
-                let ce = CSharpExpressionOptimizer.Optimize(se)
-                let (e, param) = FreeVariablesVisitor.getWithExpr(ce)
-                let fExpr = Expression.Lambda(e, param)
-                Expression.Parameter(fExpr.ReturnType, sprintf "func%d" (se.GetHashCode())), fExpr :> obj)
-        |> List.unzip
+            |> Seq.collect (fun expr -> 
+                                let qsv = new QuerySubExprVisitor(isValidQueryExpr)
+                                qsv.Visit(expr) |> ignore
+                                qsv.GetSubExprs())
+            |> Seq.toArray
+        let paramExprs, values = 
+            subExprs
+            |> Array.map(fun se ->
+                    let ce = CSharpExpressionOptimizer.Optimize(se)
+                    let (e, param) = FreeVariablesVisitor.getWithExpr(ce)
+                    let fExpr = Expression.Lambda(e, param)
+                    Expression.Parameter(fExpr.ReturnType, sprintf "func%d" (se.GetHashCode())), fExpr :> obj)
+            |> Array.unzip
+        (paramExprs, values)
 
 
 //        match se with 
