@@ -150,7 +150,7 @@
                     // Inner Enumerable Methods
                     | MethodCall (_, MethodName "Count" _,  [expr']) 
                     | MethodCall (_, MethodName "Sum" _,  [expr']) when isValidQueryExpr expr'->
-                        let freeVars = FreeVariablesVisitor.get expr
+                        let freeVars = Nessos.GpuLinq.Core.FreeVariablesVisitor.get expr
                         let argsStr = 
                             freeVars
                             |> Seq.map (fun paramExpr -> varExprToStr paramExpr vars)
