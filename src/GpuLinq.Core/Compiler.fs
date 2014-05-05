@@ -88,9 +88,8 @@
                     |> Seq.map structToStr
                     |> Set.ofSeq
                     |> Seq.fold (fun first second -> sprintf' "%s%s%s" first Environment.NewLine second) ""
-                let structsDefinitionStr (vars : seq<ParameterExpression>) =
-                    vars
-                    |> Seq.map (fun var -> var.Type)
+                let structsDefinitionStr (types : seq<Type>) =
+                    types
                     |> Seq.filter isCustomStruct 
                     |> customStructsToStr
                 let argsToStr (argParamExprs : ParameterExpression[]) (paramExprs : seq<ParameterExpression>) = 
@@ -278,10 +277,10 @@
                     let collect = funcsStr |> String.concat Environment.NewLine
                     collect
 
-                let headerStr (vars : seq<ParameterExpression>, paramExprs : ParameterExpression[], values : obj[]) = 
+                let headerStr (types : seq<Type>, paramExprs : ParameterExpression[], values : obj[]) = 
                     let funcsStr = collectFuncsStr (paramExprs, values) 
-                    let structsStr = structsDefinitionStr vars
-                    [KernelTemplates.openCLExtensions; funcsStr; structsStr] |> String.concat Environment.NewLine
+                    let structsStr = structsDefinitionStr types
+                    [KernelTemplates.openCLExtensions; structsStr; funcsStr] |> String.concat Environment.NewLine
 
                 let bodyStr (exprs : seq<Expression>) (vars : seq<ParameterExpression>) =
                     let exprsStr = exprs
@@ -305,7 +304,7 @@
                     let exprs, paramExprs, values = constantLifting context.Exprs
                     let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr exprs 
                     let vars = Seq.append paramExprs context.VarExprs
-                    let headerStr = headerStr (vars, (Array.append paramExprs paramExprs'), (Array.append values values'))
+                    let headerStr = headerStr (TypeCollector.getTypes exprs, (Array.append paramExprs paramExprs'), (Array.append values values'))
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
@@ -341,7 +340,7 @@
                     let resultTypeStr = typeToStr context.ResultType
                     let gpuArraySource = value :?> IGpuArray
                     let sourceLength = gpuArraySource.Length
-                    let headerStr = headerStr (vars, (Array.append paramExprs paramExprs'), (Array.append values values'))
+                    let headerStr = headerStr (TypeCollector.getTypes exprs, (Array.append paramExprs paramExprs'), (Array.append values values'))
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
@@ -366,7 +365,7 @@
                     let sourceLength = firstGpuArray.Length
                     let exprs, paramExprs, values = constantLifting context.Exprs
                     let vars = Seq.append paramExprs vars
-                    let headerStr = headerStr (vars, paramExprs, values)
+                    let headerStr = headerStr (TypeCollector.getTypes context.Exprs, paramExprs, values)
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
