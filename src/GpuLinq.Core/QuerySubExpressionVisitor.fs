@@ -56,7 +56,7 @@ module QuerySubExpression =
                     let ce = CSharpExpressionOptimizer.Optimize(se)
                     let (e, param) = FreeVariablesVisitor.getWithExpr(ce)
                     let fExpr = Expression.Lambda(e, param)
-                    Expression.Parameter(fExpr.ReturnType, sprintf "func%d" (se.GetHashCode())), fExpr :> obj)
+                    Expression.Parameter(fExpr.ReturnType, sprintf "___func___%d" (Math.Abs(se.ToString().GetHashCode()))), fExpr :> obj)
             |> Array.unzip
         (paramExprs, values)
 
