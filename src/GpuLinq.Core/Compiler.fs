@@ -61,7 +61,7 @@
                     | [] -> varExpr.Name
                     | vars' -> 
                         let index = vars' |> List.findIndex (fun varExpr' -> varExpr = varExpr')
-                        sprintf' "%s%d" (varExpr.ToString()) index
+                        sprintf' "___%s___%d" (varExpr.ToString()) index
                     
                 let varsToStr (vars : seq<ParameterExpression>) = 
                     let varsStr = 
