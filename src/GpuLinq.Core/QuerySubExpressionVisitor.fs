@@ -42,7 +42,7 @@ type private QuerySubExprVisitor (isValidQueryExpr : Expression -> bool) =
 
     
 module QuerySubExpression =
-    let get (isValidQueryExpr : Expression -> bool) (exprs : Expression list)  = 
+    let get (isValidQueryExpr : Expression -> bool) (exprs : Expression [])  = 
         let subExprs = 
             exprs 
             |> Seq.collect (fun expr -> 

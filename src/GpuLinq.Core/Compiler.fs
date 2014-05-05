@@ -303,7 +303,7 @@
                     let gpuArraySource = value :?> IGpuArray
                     let sourceLength = gpuArraySource.Length
                     let exprs, paramExprs, values = constantLifting context.Exprs
-                    let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr context.Exprs 
+                    let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr exprs 
                     let vars = Seq.append paramExprs context.VarExprs
                     let headerStr = headerStr (vars, (Array.append paramExprs paramExprs'), (Array.append values values'))
                     let valueArgs = collectValueArgs (paramExprs, values) 
@@ -335,7 +335,7 @@
                         | Lambda ([firstParamExpr; secondParamExpr], bodyExpr) -> firstParamExpr, secondParamExpr, bodyExpr
                         | _ -> failwithf "Invalid state %A" projectLambdaExpr 
                     let vars = Seq.append [|firstParamExpr; secondParamExpr|] vars
-                    let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr context.Exprs
+                    let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr exprs
                     let sourceTypeStr = typeToStr sourceType
                     let nestedSourceTypeStr = typeToStr nestedSourceType
                     let resultTypeStr = typeToStr context.ResultType
