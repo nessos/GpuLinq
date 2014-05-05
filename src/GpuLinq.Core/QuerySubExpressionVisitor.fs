@@ -54,8 +54,8 @@ module QuerySubExpression =
             subExprs
             |> Array.map(fun se ->
                     let ce = CSharpExpressionOptimizer.Optimize(se)
-                    let (e, param) = Nessos.GpuLinq.Core.FreeVariablesVisitor.getWithExpr(ce)
-                    let fExpr = Expression.Lambda(e, param)
+                    let (e, param) = Nessos.GpuLinq.Core.FreeVariablesVisitor.getWithExpr(se)
+                    let fExpr = Expression.Lambda(ce, param)
                     Expression.Parameter(fExpr.ReturnType, sprintf "___func___%d" (Math.Abs(se.ToString().GetHashCode()))), fExpr :> obj)
             |> Array.unzip
         (paramExprs, values)
