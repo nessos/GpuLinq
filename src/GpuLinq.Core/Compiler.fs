@@ -335,12 +335,13 @@
                         | Lambda ([firstParamExpr; secondParamExpr], bodyExpr) -> firstParamExpr, secondParamExpr, bodyExpr
                         | _ -> failwithf "Invalid state %A" projectLambdaExpr 
                     let vars = Seq.append [|firstParamExpr; secondParamExpr|] vars
+                    let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr context.Exprs
                     let sourceTypeStr = typeToStr sourceType
                     let nestedSourceTypeStr = typeToStr nestedSourceType
                     let resultTypeStr = typeToStr context.ResultType
                     let gpuArraySource = value :?> IGpuArray
                     let sourceLength = gpuArraySource.Length
-                    let headerStr = headerStr (vars, paramExprs, values)
+                    let headerStr = headerStr (vars, (Array.append paramExprs paramExprs'), (Array.append values values'))
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
