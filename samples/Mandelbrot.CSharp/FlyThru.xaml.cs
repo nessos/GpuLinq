@@ -44,6 +44,7 @@ namespace Mandelbrot
         public bool UsePar { get; set; }
 
         public bool UseSeq { get; set; }
+        public bool UseGpu { get; set; }
 
         // The length of this array determines how many frames get rendered for the dmoe
         private Tuple<float, float, float>[] RenderPoints = new Tuple<float, float, float>[150];
@@ -171,13 +172,13 @@ namespace Mandelbrot
         private void DrawMandelbrot(int cw, int ch)
         {
             // Get the renderer the user selected
-            if (!UsePar && !UseSeq)
+            if (!UsePar && !UseSeq && !UseGpu)
             {
                 MessageBox.Show("Select parallel or sequential.");
                 return;
             }
             
-            var render = FractalRenderer.SelectRender(AddPixel, CheckAbort, UseSeq, UsePar);
+            var render = FractalRenderer.SelectRender(AddPixel, CheckAbort, UseSeq, UsePar, UseGpu);
             // Create a stopwatch to clock the calculation speed
             Stopwatch timer = new Stopwatch();
             // Allocate a pair of render buffers that will be swapped per frame
@@ -277,10 +278,18 @@ namespace Mandelbrot
         private void seqCheck_Checked(object sender, RoutedEventArgs e)
         {
             parCheck.IsChecked = false;
+            gpuCheck.IsChecked = false;
         }
 
         private void parCheck_Checked(object sender, RoutedEventArgs e)
         {
+            seqCheck.IsChecked = false;
+            gpuCheck.IsChecked = false;
+        }
+
+        private void gpuCheck_Checked(object sender, RoutedEventArgs e)
+        {
+            parCheck.IsChecked = false;
             seqCheck.IsChecked = false;
         }
     }

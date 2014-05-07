@@ -19,7 +19,7 @@ namespace Algorithms
 
         public bool Abort { get { return abort(); } }
 
-        public static Render SelectRender(Action<int, int, int> draw, Func<bool> abort, bool sequentialLinqOpt, bool parallelLinqOpt)
+        public static Render SelectRender(Action<int, int, int> draw, Func<bool> abort, bool sequentialLinqOpt, bool parallelLinqOpt, bool gpuLinqOpt)
         {
             var r = new ScalarLinqRenderer(draw, abort);
 
@@ -27,6 +27,8 @@ namespace Algorithms
                 return r.RenderSingleThreadedWithLinq;
             else if (parallelLinqOpt)
                 return r.RenderMultiThreadedWithLinq;
+            else if (gpuLinqOpt)
+                return r.RenderWithGpuLinq;
             else
                 throw new InvalidOperationException("No renderer chosen.");
             

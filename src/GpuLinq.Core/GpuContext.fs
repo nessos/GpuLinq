@@ -202,6 +202,13 @@
                 if input.Length = 0 then
                     ()
                 else
+                    match compilerResult.SourceType with
+                    | Compiler.SourceType.NestedSource ->
+                        let nestedInput = compilerResult.SourceArgs.[1]
+                        match Cl.SetKernelArg(kernel, (incr argIndex; uint32 !argIndex), new IntPtr(sizeof<int>), nestedInput.Length) with
+                        | ErrorCode.Success -> ()
+                        | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
+                    | _ -> ()
                     addKernelBufferArg kernel (outputGpuArray.GetBuffer())  argIndex
                     match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                     | ErrorCode.Success, event ->
@@ -241,6 +248,7 @@
                         match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                         | ErrorCode.Success, event ->
                             use event = event
+                            env.CommandQueues.[0].Finish() |> ignore
                             createGpuArray queryExpr.Type env (input.Length * nestedInput.Length) (input.Capacity * nestedInput.Capacity) outputBuffer 
                         | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                 match queryExpr with
@@ -261,6 +269,7 @@
                             match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                             | ErrorCode.Success, event ->
                                 use event = event
+                                env.CommandQueues.[0].Finish() |> ignore
                                 createGpuArray queryExpr.Type env input.Length input.Capacity outputBuffer 
                             | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                         | Compiler.NestedSource ->
@@ -273,6 +282,7 @@
                             match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                             | ErrorCode.Success, event ->
                                 use event = event
+                                env.CommandQueues.[0].Finish() |> ignore
                                 createGpuArray queryExpr.Type env (input.Length * nestedInput.Length) (input.Capacity * nestedInput.Capacity) outputBuffer 
                             | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                         | _ -> failwithf "Not supported %A" compilerResult.SourceType
@@ -300,7 +310,7 @@
                             readFromBuffer env.CommandQueues.[0] queryExpr.Type outputBuffer output 
                             let result = createDynamicArray queryExpr.Type (flags :?> int[]) output
                             match Cl.CreateBuffer(env.Context, MemFlags.ReadWrite ||| MemFlags.None ||| MemFlags.UseHostPtr, new IntPtr(input.Length * input.Size), result) with
-                            | resultBuffer, ErrorCode.Success -> 
+                            | resultBuffer, ErrorCode.Success ->
                                 createGpuArray queryExpr.Type env result.Length input.Capacity resultBuffer 
                             | _, error -> failwithf "OpenCL.CreateBuffer failed with error code %A" error 
                         | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error

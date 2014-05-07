@@ -292,7 +292,7 @@
                 let collectValueArgs (paramExprs : ParameterExpression[], values : obj[]) = 
                     (paramExprs, values) 
                     ||> Array.zip 
-                    |> Array.filter (fun (paramExpr, _) -> not (typeof<Expression>.IsAssignableFrom(paramExpr.Type)))
+                    |> Array.filter (fun (paramExpr, value) -> not (typeof<Expression>.IsAssignableFrom(paramExpr.Type)))
                     |> Array.map (fun (paramExpr, value) -> (value, paramExpr.Type))
 
                 match queryExpr with
@@ -335,12 +335,13 @@
                         | _ -> failwithf "Invalid state %A" projectLambdaExpr 
                     let vars = Seq.append [|firstParamExpr; secondParamExpr|] vars
                     let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr exprs
+                    let paramExprs, values = (Array.append paramExprs paramExprs'), (Array.append values values')
                     let sourceTypeStr = typeToStr sourceType
                     let nestedSourceTypeStr = typeToStr nestedSourceType
                     let resultTypeStr = typeToStr context.ResultType
                     let gpuArraySource = value :?> IGpuArray
                     let sourceLength = gpuArraySource.Length
-                    let headerStr = headerStr (TypeCollector.getTypes exprs, (Array.append paramExprs paramExprs'), (Array.append values values'))
+                    let headerStr = headerStr (TypeCollector.getTypes exprs, (paramExprs), values)
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars

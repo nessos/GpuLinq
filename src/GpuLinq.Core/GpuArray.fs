@@ -36,7 +36,7 @@
     type GpuArray<'T when 'T : struct and 'T : (new : unit -> 'T) and 'T :> ValueType> 
                     (array : 'T[], env : Environment, length : int, capacity : int, size : int, buffer : IMem) =
         let mutable disposed = false
-        new (env : Environment, length : int, capacity : int, size : int, buffer : IMem) = new GpuArray<'T>([||], env, length, capacity, size, buffer)
+        new (env : Environment, length : int, capacity : int, size : int, buffer : IMem) = new GpuArray<'T>(Array.zeroCreate length, env, length, capacity, size, buffer)
         
         member self.ToArray() = 
             let array = Array.create length Unchecked.defaultof<'T>

@@ -56,6 +56,7 @@
                 </Grid.ColumnDefinitions>
                 <CheckBox Name="seqCheck" Checked="seqCheck_Checked" Content="Sequential" Grid.Column="0" VerticalAlignment="Center" IsChecked="{Binding UseSeq, Mode=OneWayToSource}"/>
                 <CheckBox Name="parCheck" Checked="parCheck_Checked" Content="Multi-threaded" Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding UsePar,Mode=OneWayToSource}"/>
+                <CheckBox Name="gpuCheck" Checked="gpuCheck_Checked"  Content="Gpu" Grid.Column="2" VerticalAlignment="Center" IsChecked="{Binding UseGpu,Mode=OneWayToSource}"/>
                 <Button x:Name="BeginButton" Content="Begin" Grid.Column="4" Click="Begin_Click"/>
                 <Label Content="Elapsed Time:" Grid.Column="2"/>
                 <TextBox DockPanel.Dock="Right" MinWidth="50" Text="{Binding ElapsedTime,Mode=OneWay}" IsReadOnly="True" HorizontalAlignment="Stretch" Grid.Column="3"/>

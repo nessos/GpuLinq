@@ -2,7 +2,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Nessos.GpuLinq.Core;
+using Nessos.GpuLinq.CSharp;
 using Nessos.LinqOptimizer.Base;
 using Nessos.LinqOptimizer.CSharp;
 
@@ -36,6 +40,14 @@ namespace Algorithms
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Complex
+    {
+        public float Real;
+        public float Img;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     public struct Triple
     {
         public int X;
@@ -43,14 +55,30 @@ namespace Algorithms
         public int Step;
     }
 
+
     internal class ScalarLinqRenderer : FractalRenderer
     {
+        Expression<Func<Complex, float>> squareLength = complex => complex.Real * complex.Real + complex.Img * complex.Img;
+        Expression<Func<Complex, Complex, Complex>> mult =
+            (c1, c2) => new Complex
+            {
+                Real = c1.Real * c2.Real - c1.Img * c2.Img,
+                Img = c1.Real * c2.Img + c2.Real * c1.Img
+            };
+        Expression<Func<Complex, Complex, Complex>> add =
+            (c1, c2) => new Complex { Real = c1.Real + c2.Real, Img = c1.Img + c2.Img };
 
+        private readonly GpuContext context;
+        private readonly IGpuArray<int> _xs;
+        private readonly IGpuArray<int> _ys;
         public ScalarLinqRenderer(Action<int, int, int> dp, Func<bool> abortFunc)
             : base(dp, abortFunc)
         {
             int[] ys = Enumerable.Range(0, 312).ToArray();
             int[] xs = Enumerable.Range(0, 534).ToArray();
+            this.context = new GpuContext();
+            this._xs = context.CreateGpuArray(xs);
+            this._ys = context.CreateGpuArray(ys);
 
             parFunc = ParallelExtensions.Compile<float, float, float, Triple[]>(
                     (_ymin, _xmin, _step) =>
@@ -89,6 +117,29 @@ namespace Algorithms
 
             var result = parFunc(ymin, xmin, step);
             result.ForEach(m => DrawPixel(m.X, m.Y, m.Step));
+        }
+
+        public void RenderWithGpuLinq(float xmin, float xmax, float ymin, float ymax, float step)
+        {
+
+            var query =
+                 (from yp in _ys.AsGpuQueryExpr()
+                  from xp in _xs
+                  let _y = ymin + step * yp
+                  let _x = xmin + step * xp
+                  let c = new Complex { Real = _x, Img = _y }
+                  let iters = EnumerableEx.Generate(c, x => squareLength.Invoke(x) < limit,
+                                           x => add.Invoke(mult.Invoke(x, x), c), x => x)
+                                          .Take(max_iters)
+                                          .Count()
+                  select new Triple { X = xp, Y = yp, Step = iters });
+
+            using (IGpuArray<Triple> gpuArray = context.Run(query))
+            {
+                gpuArray.Refresh();
+                gpuArray.GetArray().ForEach(m => DrawPixel(m.X, m.Y, m.Step));
+            }
+            
         }
 
         public void RenderSingleThreadedWithLinq(float xmin, float xmax, float ymin, float ymax, float step)

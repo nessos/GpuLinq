@@ -48,6 +48,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
                 int[] ys = Enumerable.Range(0, 312).ToArray();
                 int[] xs = Enumerable.Range(0, 534).ToArray();
+                Triple[] output = Enumerable.Range(1, 1048576).Select(_ => new Triple()).ToArray();
 
                 using (var context = new GpuContext())
                 {
@@ -55,26 +56,39 @@ namespace Nessos.GpuLinq.Tests.CSharp
                     {
                         using (var _ys = context.CreateGpuArray(ys))
                         {
-                            float _ymin = 0;
-                            float _xmin = 1;
-                            float _step = 2;
-                            int max_iters = 10;
-                            float limit = 12;
-                            var query =
-                                (from yp in _ys.AsGpuQueryExpr()
-                                 from xp in _xs
-                                 let _y = _ymin + _step * yp
-                                 let _x = _xmin + _step * xp
-                                 let c = new Complex { Real = _x, Img = _y }
-                                 let iters = EnumerableEx.Generate(c, x => squareLength.Invoke(x) < limit, 
-                                                          x => add.Invoke(mult.Invoke(x, x), c) , x => x)
-                                                         .Take(max_iters)
-                                                         .Count()
-                                 select new Triple { X = xp, Y = yp, Step = iters }).ToArray();
+                            using (var _output = context.CreateGpuArray(output))
+                            {
+                                float _ymin = 0;
+                                float _xmin = 1;
+                                float _step = 2;
+                                int max_iters = 10;
+                                float limit = 12;
+                                var query =
+                                     (from yp in _ys.AsGpuQueryExpr()
+                                     from xp in _xs
+                                     let _y = _ymin + _step * yp
+                                     let _x = _xmin + _step * xp
+                                     let c = new Complex { Real = _x, Img = _y }
+                                     let iters = EnumerableEx.Generate(c, x => squareLength.Invoke(x) < limit,
+                                                              x => add.Invoke(mult.Invoke(x, x), c), x => x)
+                                                             .Take(max_iters)
+                                                             .Count()
+                                     select new Triple { X = xp, Y = yp, Step = iters });
 
 
-                            Measure(() => context.Run(query));
-
+                                Measure(() =>
+                                    {
+                                        for (int i = 0; i < 250; i++)
+                                        {
+                                            using (var test = context.Run(query))
+                                            {
+                                                test.Refresh();
+                                            }
+                                            //context.Fill(query, _output);
+                                            //_output.Refresh();
+                                        }
+                                    });
+                            }
                         }
                     }
                 }
