@@ -1,4 +1,6 @@
-﻿using Algorithms;
+﻿// Project code based on http://code.msdn.microsoft.com/SIMD-Sample-f2c8c35a/sourcecode?fileId=112212&pathId=272559283
+
+using Algorithms;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;

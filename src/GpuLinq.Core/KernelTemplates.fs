@@ -15,10 +15,11 @@
                             }"
 
         let nestedMapTemplate = sprintf "%s
-                            __kernel void kernelCode(__global %s* ___input___, __global %s* ___nestedInput___,  %s int ___nestedInputLength___, __global %s* ___result___)
+                            __kernel void kernelCode(__global %s* ___input___, __global %s* ___nestedInput___,  %s int ___inputLength___, int ___nestedInputLength___, __global %s* ___result___)
                             {
                                 %s
                                 int ___id___ = get_global_id(0);
+                                if(___id___ >= ___inputLength___) return;
                                 %s = ___input___[___id___];
                                 int ___counter___ = ___id___ * ___nestedInputLength___;
                                 for (int ___indexer___ = 0; ___indexer___ < ___nestedInputLength___; ___indexer___++)

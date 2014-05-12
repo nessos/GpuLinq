@@ -1,6 +1,9 @@
-﻿using System;
+﻿// Project code based on http://code.msdn.microsoft.com/SIMD-Sample-f2c8c35a/sourcecode?fileId=112212&pathId=272559283
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
@@ -47,13 +50,7 @@ namespace Algorithms
         public float Img;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    public struct Triple
-    {
-        public int X;
-        public int Y;
-        public int Step;
-    }
+
 
 
     internal class ScalarLinqRenderer : FractalRenderer
@@ -71,16 +68,19 @@ namespace Algorithms
         private readonly GpuContext context;
         private readonly IGpuArray<int> _xs;
         private readonly IGpuArray<int> _ys;
+        private readonly IGpuArray<int> _output;
         public ScalarLinqRenderer(Action<int, int, int> dp, Func<bool> abortFunc)
             : base(dp, abortFunc)
         {
             int[] ys = Enumerable.Range(0, 312).ToArray();
             int[] xs = Enumerable.Range(0, 534).ToArray();
+            int[] output = Enumerable.Range(0, 534 * 312).ToArray();
             this.context = new GpuContext();
             this._xs = context.CreateGpuArray(xs);
             this._ys = context.CreateGpuArray(ys);
+            this._output = context.CreateGpuArray(output);
 
-            parFunc = ParallelExtensions.Compile<float, float, float, Triple[]>(
+            parFunc = ParallelExtensions.Compile<float, float, float, int[]>(
                     (_ymin, _xmin, _step) =>
                         (from yp in ys.AsParallelQueryExpr()
                         from xp in xs
@@ -90,10 +90,10 @@ namespace Algorithms
                         let iters = EnumerableEx.Generate(c, x => x.SquareLength < limit, x => x * x + c, x => x)
                                                 .Take(max_iters)
                                                 .Count()
-                        select new Triple { X = xp, Y = yp, Step = iters }).ToArray()
+                        select iters).ToArray()
                     );
 
-            seqFunc = Extensions.Compile<float, float, float, Triple[]>(
+            seqFunc = Extensions.Compile<float, float, float, int[]>(
                     (_ymin, _xmin, _step) =>
                         (from yp in ys.AsQueryExpr()
                          from xp in xs
@@ -103,20 +103,20 @@ namespace Algorithms
                          let iters = EnumerableEx.Generate(c, x => x.SquareLength < limit, x => x * x + c, x => x)
                                                  .Take(max_iters)
                                                  .Count()
-                         select new Triple { X = xp, Y = yp, Step = iters }).ToArray()
+                         select iters).ToArray()
                     );
         }
 
         protected const float limit = 4.0f;
 
-        readonly Func<float, float, float, Triple[]> parFunc;
-        readonly Func<float, float, float, Triple[]> seqFunc;
+        readonly Func<float, float, float, int[]> parFunc;
+        readonly Func<float, float, float, int[]> seqFunc;
 
         public void RenderMultiThreadedWithLinq(float xmin, float xmax, float ymin, float ymax, float step)
         {
 
             var result = parFunc(ymin, xmin, step);
-            result.ForEach(m => DrawPixel(m.X, m.Y, m.Step));
+            DrawPixels(result);
         }
 
         public void RenderWithGpuLinq(float xmin, float xmax, float ymin, float ymax, float step)
@@ -132,33 +132,39 @@ namespace Algorithms
                                            x => add.Invoke(mult.Invoke(x, x), c), x => x)
                                           .Take(max_iters)
                                           .Count()
-                  select new Triple { X = xp, Y = yp, Step = iters });
-
-            using (IGpuArray<Triple> gpuArray = context.Run(query))
+                  select iters);
+            try
             {
-                gpuArray.Refresh();
-                gpuArray.GetArray().ForEach(m => DrawPixel(m.X, m.Y, m.Step));
+                
+                context.Fill(query, _output);
+                _output.Refresh();
+                var array = _output.GetArray();
+                DrawPixels(array);
+            }
+            catch (Exception ex)
+            {
+                
             }
             
+        }
+
+        private void DrawPixels(int[] array)
+        {
+            int i = 0;
+            for (int y = 0; y < _ys.Length; y++)
+            {
+                for (int x = 0; x < _xs.Length; x++)
+                {
+                    DrawPixel(x, y, array[i++]);
+                }
+            }
         }
 
         public void RenderSingleThreadedWithLinq(float xmin, float xmax, float ymin, float ymax, float step)
         {
 
             var result = seqFunc(ymin, xmin, step);
-            result.ForEach(m => DrawPixel(m.X, m.Y, m.Step));
-
-            //var query =
-            //    from yp in Enumerable.Range(0, (int)(((ymax - ymin) / step) + .5f)).AsQueryExpr()
-            //    from xp in Enumerable.Range(0, (int)(((xmax - xmin) / step) + .5f))
-            //    let _y = ymin + step * yp
-            //    let _x = xmin + step * xp
-            //    let c = new MyComplex(_x, _y)
-            //    let iters = EnumerableEx.Generate(c, x => x.SquareLength < limit, x => x * x + c, x => x)
-            //                            .Take(max_iters)
-            //                            .Count()
-            //    select Tuple.Create(xp, yp, iters);
-            //query.ForEach(m => DrawPixel(m.Item1, m.Item2, m.Item3)).Run();
+            DrawPixels(result);
 
         }
     }

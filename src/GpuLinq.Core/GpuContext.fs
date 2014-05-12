@@ -35,6 +35,10 @@
                         | info, ErrorCode.Success -> info.CastTo<int>()
                         | _, error -> failwithf "OpenCL.GetDeviceInfo failed with error code %A" error
         
+        let getLocalGroupSize (input : IGpuArray) = 
+            if input.Length < maxGroupSize then input.Length 
+            else maxGroupSize
+
         let compileOptionsToString (options : GpuCompileOptions) =
             let sb = new Text.StringBuilder()
             let contains pattern = options &&& pattern = pattern
@@ -130,9 +134,15 @@
                 cache.Add(source, (program, kernel))
                 kernel
 
-        let addKernelBufferArg (kernel : Kernel) (buffer : IMem) (argIndex : int ref) = 
+        let addKernelBufferArg (kernel : Kernel) (argIndex : int ref) (buffer : IMem) = 
             incr argIndex
             match Cl.SetKernelArg(kernel, uint32 !argIndex, buffer) with
+            | ErrorCode.Success -> ()
+            | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
+
+        let setKernelArg (kernel : Kernel) (argIndex : int ref)  (arg : 'T) = 
+            incr argIndex
+            match Cl.SetKernelArg(kernel, uint32 !argIndex, new IntPtr(sizeof<'T>), arg) with
             | ErrorCode.Success -> ()
             | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
 
@@ -140,7 +150,7 @@
             // Set Source Args
             for input in compilerResult.SourceArgs do
                 if input.Length <> 0 then 
-                    addKernelBufferArg kernel (input.GetBuffer()) argIndex
+                    addKernelBufferArg kernel argIndex (input.GetBuffer()) 
                 else incr argIndex 
                 
             // Set Value Args
@@ -154,7 +164,7 @@
                 | Named(typedef, [|elemType|]) when typedef = typedefof<IGpuArray<_>> -> 
                     let gpuArray = (value :?> IGpuArray)
                     if gpuArray.Length <> 0 then
-                        addKernelBufferArg kernel (gpuArray.GetBuffer()) argIndex
+                        addKernelBufferArg kernel argIndex (gpuArray.GetBuffer()) 
                     else incr argIndex
                 | _ -> failwithf "Not supported result type %A" t
 
@@ -205,12 +215,11 @@
                     match compilerResult.SourceType with
                     | Compiler.SourceType.NestedSource ->
                         let nestedInput = compilerResult.SourceArgs.[1]
-                        match Cl.SetKernelArg(kernel, (incr argIndex; uint32 !argIndex), new IntPtr(sizeof<int>), nestedInput.Length) with
-                        | ErrorCode.Success -> ()
-                        | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
+                        setKernelArg kernel argIndex input.Length
+                        setKernelArg kernel argIndex nestedInput.Length
                     | _ -> ()
-                    addKernelBufferArg kernel (outputGpuArray.GetBuffer())  argIndex
-                    match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
+                    addKernelBufferArg kernel argIndex (outputGpuArray.GetBuffer())
+                    match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(getLocalGroupSize input) |], uint32 0, null) with
                     | ErrorCode.Success, event ->
                         use event = event
                         env.CommandQueues.[0].Finish() |> ignore
@@ -240,12 +249,11 @@
                     if input.Length = 0 then
                         createGpuArray queryExpr.Type env input.Length input.Capacity null 
                     else
-                        match Cl.SetKernelArg(kernel, (incr argIndex; uint32 !argIndex), new IntPtr(sizeof<int>), nestedInput.Length) with
-                        | ErrorCode.Success -> ()
-                        | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
+                        setKernelArg kernel argIndex input.Length
+                        setKernelArg kernel argIndex nestedInput.Length
                         let outputBuffer = createBuffer queryExpr.Type env (input.Length * nestedInput.Length)
-                        addKernelBufferArg kernel outputBuffer argIndex
-                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
+                        addKernelBufferArg kernel argIndex outputBuffer 
+                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(getLocalGroupSize input) |], uint32 0, null) with
                         | ErrorCode.Success, event ->
                             use event = event
                             env.CommandQueues.[0].Finish() |> ignore
@@ -265,7 +273,7 @@
                         match compilerResult.SourceType with
                         | Compiler.SingleSource | Compiler.Zip ->
                             let outputBuffer = createBuffer queryExpr.Type env input.Capacity
-                            addKernelBufferArg kernel outputBuffer argIndex
+                            addKernelBufferArg kernel argIndex outputBuffer 
                             match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                             | ErrorCode.Success, event ->
                                 use event = event
@@ -274,12 +282,11 @@
                             | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                         | Compiler.NestedSource ->
                             let nestedInput = compilerResult.SourceArgs.[1]
-                            match Cl.SetKernelArg(kernel, (incr argIndex; uint32 !argIndex), new IntPtr(sizeof<int>), nestedInput.Length) with
-                            | ErrorCode.Success -> ()
-                            | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
+                            setKernelArg kernel argIndex input.Length
+                            setKernelArg kernel argIndex nestedInput.Length
                             let outputBuffer = createBuffer queryExpr.Type env (input.Capacity * nestedInput.Capacity)
-                            addKernelBufferArg kernel outputBuffer argIndex
-                            match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
+                            addKernelBufferArg kernel argIndex outputBuffer 
+                            match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(getLocalGroupSize input) |], uint32 0, null) with
                             | ErrorCode.Success, event ->
                                 use event = event
                                 env.CommandQueues.[0].Finish() |> ignore
@@ -301,8 +308,8 @@
                         use outputBuffer = createBuffer queryExpr.Type env input.Capacity
                         let flags = Array.CreateInstance(typeof<int>, input.Length)
                         use flagsBuffer = createBuffer typeof<int> env input.Capacity
-                        addKernelBufferArg kernel flagsBuffer argIndex
-                        addKernelBufferArg kernel outputBuffer argIndex
+                        addKernelBufferArg kernel argIndex flagsBuffer 
+                        addKernelBufferArg kernel argIndex outputBuffer 
                         match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
                         | ErrorCode.Success, event ->
                             use event = event
@@ -333,7 +340,7 @@
                     | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
                     let output = Array.CreateInstance(queryExpr.Type, outputLength)
                     use outputBuffer = createBuffer queryExpr.Type env outputLength
-                    addKernelBufferArg kernel outputBuffer argIndex
+                    addKernelBufferArg kernel argIndex outputBuffer 
                     // local buffer
                     match Cl.SetKernelArg(kernel, (incr argIndex; uint32 !argIndex), new IntPtr(Marshal.SizeOf(queryExpr.Type) * maxGroupSize), null) with
                     | ErrorCode.Success ->

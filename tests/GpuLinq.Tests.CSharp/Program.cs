@@ -48,7 +48,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
                 int[] ys = Enumerable.Range(0, 312).ToArray();
                 int[] xs = Enumerable.Range(0, 534).ToArray();
-                Triple[] output = Enumerable.Range(1, 1048576).Select(_ => new Triple()).ToArray();
+                Triple[] output = Enumerable.Range(1, xs.Length * ys.Length).Select(_ => new Triple()).ToArray();
 
                 using (var context = new GpuContext())
                 {
@@ -80,12 +80,8 @@ namespace Nessos.GpuLinq.Tests.CSharp
                                     {
                                         for (int i = 0; i < 250; i++)
                                         {
-                                            using (var test = context.Run(query))
-                                            {
-                                                test.Refresh();
-                                            }
-                                            //context.Fill(query, _output);
-                                            //_output.Refresh();
+                                            context.Run(query);
+                                            
                                         }
                                     });
                             }
