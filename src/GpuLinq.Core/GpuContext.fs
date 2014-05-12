@@ -215,15 +215,23 @@
                     match compilerResult.SourceType with
                     | Compiler.SourceType.NestedSource ->
                         let nestedInput = compilerResult.SourceArgs.[1]
-                        setKernelArg kernel argIndex input.Length
+                        setKernelArg kernel argIndex input.Length    
                         setKernelArg kernel argIndex nestedInput.Length
-                    | _ -> ()
-                    addKernelBufferArg kernel argIndex (outputGpuArray.GetBuffer())
-                    match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(getLocalGroupSize input) |], uint32 0, null) with
-                    | ErrorCode.Success, event ->
-                        use event = event
-                        env.CommandQueues.[0].Finish() |> ignore
-                    | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
+                        addKernelBufferArg kernel argIndex (outputGpuArray.GetBuffer())
+                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Length) |], [| new IntPtr(getLocalGroupSize input) |], uint32 0, null) with
+                        | ErrorCode.Success, event ->
+                            use event = event
+                            env.CommandQueues.[0].Finish() |> ignore
+                        | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
+                    | Compiler.SourceType.SingleSource | Compiler.SourceType.Zip ->
+                        addKernelBufferArg kernel argIndex (outputGpuArray.GetBuffer())
+                        match Cl.EnqueueNDRangeKernel(env.CommandQueues.[0], kernel, uint32 1, null, [| new IntPtr(input.Capacity) |], [| new IntPtr(maxGroupSize) |], uint32 0, null) with
+                        | ErrorCode.Success, event ->
+                            use event = event
+                            env.CommandQueues.[0].Finish() |> ignore
+                        | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
+                    
+                    
             | reductionType -> failwith "Invalid ReductionType %A" reductionType
 
         /// <summary>
