@@ -50,7 +50,12 @@ namespace Algorithms
         public float Img;
     }
 
-
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Pair
+    {
+        public int X;
+        public int Y;
+    }
 
 
     internal class ScalarLinqRenderer : FractalRenderer
@@ -66,26 +71,22 @@ namespace Algorithms
             (c1, c2) => new Complex { Real = c1.Real + c2.Real, Img = c1.Img + c2.Img };
 
         private readonly GpuContext context;
-        private readonly IGpuArray<int> _xs;
-        private readonly IGpuArray<int> _ys;
+        private readonly IGpuArray<Pair> _pairs;
         private readonly IGpuArray<int> _output;
         public ScalarLinqRenderer(Action<int, int, int> dp, Func<bool> abortFunc)
             : base(dp, abortFunc)
         {
-            int[] ys = Enumerable.Range(0, 312).ToArray();
-            int[] xs = Enumerable.Range(0, 534).ToArray();
-            int[] output = Enumerable.Range(0, 534 * 312).ToArray();
+            Pair[] pairs = Enumerable.Range(0, 312).SelectMany(y => Enumerable.Range(0, 534).Select(x => new Pair { X = x, Y = y })).ToArray();
+            int[] output = Enumerable.Range(0, pairs.Length).ToArray();
             this.context = new GpuContext();
-            this._xs = context.CreateGpuArray(xs);
-            this._ys = context.CreateGpuArray(ys);
+            this._pairs = context.CreateGpuArray(pairs);
             this._output = context.CreateGpuArray(output);
 
             parFunc = ParallelExtensions.Compile<float, float, float, int[]>(
                     (_ymin, _xmin, _step) =>
-                        (from yp in ys.AsParallelQueryExpr()
-                        from xp in xs
-                        let _y = _ymin + _step * yp
-                        let _x = _xmin + _step * xp
+                        (from pair in pairs.AsParallelQueryExpr()
+                        let _y = _ymin + _step * pair.Y
+                        let _x = _xmin + _step * pair.X
                         let c = new MyComplex(_x, _y)
                         let iters = EnumerableEx.Generate(c, x => x.SquareLength < limit, x => x * x + c, x => x)
                                                 .Take(max_iters)
@@ -95,10 +96,9 @@ namespace Algorithms
 
             seqFunc = Extensions.Compile<float, float, float, int[]>(
                     (_ymin, _xmin, _step) =>
-                        (from yp in ys.AsQueryExpr()
-                         from xp in xs
-                         let _y = _ymin + _step * yp
-                         let _x = _xmin + _step * xp
+                        (from pair in pairs.AsQueryExpr()
+                         let _y = _ymin + _step * pair.Y
+                         let _x = _xmin + _step * pair.X
                          let c = new MyComplex(_x, _y)
                          let iters = EnumerableEx.Generate(c, x => x.SquareLength < limit, x => x * x + c, x => x)
                                                  .Take(max_iters)
@@ -123,10 +123,9 @@ namespace Algorithms
         {
 
             var query =
-                 (from yp in _ys.AsGpuQueryExpr()
-                  from xp in _xs
-                  let _y = ymin + step * yp
-                  let _x = xmin + step * xp
+                 (from pair in _pairs.AsGpuQueryExpr()
+                  let _y = ymin + step * pair.Y
+                  let _x = xmin + step * pair.X
                   let c = new Complex { Real = _x, Img = _y }
                   let iters = EnumerableEx.Generate(c, x => squareLength.Invoke(x) < limit,
                                            x => add.Invoke(mult.Invoke(x, x), c), x => x)
@@ -151,9 +150,9 @@ namespace Algorithms
         private void DrawPixels(int[] array)
         {
             int i = 0;
-            for (int y = 0; y < _ys.Length; y++)
+            for (int y = 0; y < 312; y++)
             {
-                for (int x = 0; x < _xs.Length; x++)
+                for (int x = 0; x < 534; x++)
                 {
                     DrawPixel(x, y, array[i++]);
                 }

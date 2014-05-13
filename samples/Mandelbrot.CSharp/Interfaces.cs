@@ -10,7 +10,7 @@ namespace Algorithms
 
         private Func<bool> abort;
         private Action<int, int, int> drawPixel;
-        protected const int max_iters = 1000; // Make this higher to see more detail when zoomed in (and slow down rendering a lot)
+        protected const int max_iters = 10000; // Make this higher to see more detail when zoomed in (and slow down rendering a lot)
 
         protected FractalRenderer(Action<int, int, int> draw, Func<bool> checkAbort)
         {

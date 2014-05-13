@@ -79,19 +79,22 @@
                         ((expr :?> BlockExpression).Expressions.ToArray(), paramExprs, objs)
                 let isCustomStruct (t : Type) = t.IsValueType && not t.IsPrimitive
                 let structToStr (t : Type) = 
+                    let fields = t.GetFields().OrderBy(fun f -> Marshal.OffsetOf(t, f.Name).ToInt32()).ToArray()
                     let fieldsStr = 
-                        (t.GetFields(), "")
+                        (fields, "")
                         ||> Array.foldBack (fun fieldInfo fieldsStr -> sprintf' "%s %s; %s" (typeToStr fieldInfo.FieldType) fieldInfo.Name fieldsStr) 
                     sprintf' "typedef struct { %s } %s;" fieldsStr t.Name
                 let customStructsToStr (types : seq<Type>) = 
                     types 
                     |> Seq.map structToStr
-                    |> Set.ofSeq
                     |> Seq.fold (fun first second -> sprintf' "%s%s%s" first Environment.NewLine second) ""
                 let structsDefinitionStr (types : seq<Type>) =
-                    types
-                    |> Seq.filter isCustomStruct 
-                    |> customStructsToStr
+                    let customTypes = 
+                        types
+                        |> Seq.filter isCustomStruct 
+                        |> Seq.distinctBy (fun t -> t.FullName)
+                        |> Array.ofSeq
+                    customStructsToStr customTypes
                 let argsToStr (argParamExprs : ParameterExpression[]) (paramExprs : seq<ParameterExpression>) = 
                     let argParamExprs = argParamExprs |> Array.filter (fun paramExpr -> not <| typeof<Expression>.IsAssignableFrom(paramExpr.Type))
                     (argParamExprs, "") 
@@ -302,9 +305,10 @@
                     let gpuArraySource = value :?> IGpuArray
                     let sourceLength = gpuArraySource.Length
                     let exprs, paramExprs, values = constantLifting context.Exprs
-                    let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr exprs 
                     let vars = Seq.append paramExprs context.VarExprs
-                    let headerStr = headerStr (TypeCollector.getTypes exprs, (Array.append paramExprs paramExprs'), (Array.append values values'))
+                    let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr exprs 
+                    let paramExprs, values = (Array.append paramExprs paramExprs'), (Array.append values values')
+                    let headerStr = headerStr (TypeCollector.getTypes exprs, paramExprs, values)
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
