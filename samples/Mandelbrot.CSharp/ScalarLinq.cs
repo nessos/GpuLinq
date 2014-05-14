@@ -132,18 +132,12 @@ namespace Algorithms
                                           .Take(max_iters)
                                           .Count()
                   select iters);
-            try
-            {
+
                 
-                context.Fill(query, _output);
-                _output.Refresh();
-                var array = _output.GetArray();
-                DrawPixels(array);
-            }
-            catch (Exception ex)
-            {
-                
-            }
+            context.Fill(query, _output);
+            _output.Refresh();
+            var array = _output.GetArray();
+            DrawPixels(array);
             
         }
 
