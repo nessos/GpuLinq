@@ -31,8 +31,12 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Release\GpuLinq.CSharp.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <Private>True</Private>
+    </Reference>
     <Reference Include="LinqOptimizer.Base">
       <HintPath>..\..\packages\LinqOptimizer.CSharp.0.6.3\lib\LinqOptimizer.Base.dll</HintPath>
     </Reference>

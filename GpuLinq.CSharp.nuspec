@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+	<metadata>
+		<id>GpuLinq.CSharp</id>
+		<version>0.1.0</version>
+		<title>GpuLinq.CSharp</title>
+		<authors>Kostas Rontogiannis,Nick Palladinos</authors>
+		<owners>krontogiannis; Nick.Palladinos</owners>
+		<licenseUrl>https://github.com/palladin/GpuLinq/blob/master/LICENSE.md</licenseUrl>
+		<projectUrl>https://github.com/palladin/GpuLinq</projectUrl>
+		<requireLicenseAcceptance>false</requireLicenseAcceptance>
+		<description>AN automatic query optimizer for LINQ producing OpenCL kernel code.</description>
+		<summary>AN automatic query optimizer for LINQ producing OpenCL kernel code.</summary>
+		<copyright>Nessos IT</copyright>
+		<tags>C# linq optimization gpu opencl</tags>
+		<references>
+			<reference file="GpuLinq.Base.dll" />
+			<reference file="GpuLinq.Core.dll" />
+			<reference file="GpuLinq.CSharp.dll" />
+		</references>
+		<dependencies>
+		  <dependency id="LinqOptimizer.CSharp" version="0.6.3" />
+		  <dependency id="OpenCL.Net" version="2.2.9.0" />
+		</dependencies>
+	</metadata>
+	<files>
+		<file src="src\GpuLinq.CSharp\bin\Release\FSharp.Core.dll" target="lib\FSharp.Core.dll" />
+		<file src="src\GpuLinq.CSharp\bin\Release\FSharp.Core.xml" target="lib\FSharp.Core.xml" />
+		<file src="src\GpuLinq.CSharp\bin\Release\GpuLinq.Base.dll" target="lib\GpuLinq.Base.dll" />
+		<file src="src\GpuLinq.CSharp\bin\Release\GpuLinq.Base.xml" target="lib\GpuLinq.Base.xml" />
+		<file src="src\GpuLinq.CSharp\bin\Release\GpuLinq.Core.dll" target="lib\GpuLinq.Core.dll" />
+		<file src="src\GpuLinq.CSharp\bin\Release\GpuLinq.Core.xml" target="lib\GpuLinq.Core.xml" />
+		<file src="src\GpuLinq.CSharp\bin\Release\GpuLinq.CSharp.dll" target="lib\GpuLinq.CSharp.dll" />
+		<file src="src\GpuLinq.CSharp\bin\Release\GpuLinq.CSharp.XML" target="lib\GpuLinq.CSharp.XML" />
+	</files>
+</package>
