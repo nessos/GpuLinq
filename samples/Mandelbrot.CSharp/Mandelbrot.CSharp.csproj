@@ -48,16 +48,17 @@
     <OutputPath>bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="LinqOptimizer.Base, Version=0.5.2.29915, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="LinqOptimizer.Base, Version=0.6.3.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\LinqOptimizer\src\LinqOptimizer.CSharp\bin\Debug\LinqOptimizer.Base.dll</HintPath>
+      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.6.3\lib\LinqOptimizer.Base.dll</HintPath>
     </Reference>
-    <Reference Include="LinqOptimizer.Core">
-      <HintPath>..\..\..\LinqOptimizer\src\LinqOptimizer.CSharp\bin\Debug\LinqOptimizer.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="LinqOptimizer.CSharp, Version=0.5.2.29916, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="LinqOptimizer.Core, Version=0.6.3.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\LinqOptimizer\src\LinqOptimizer.CSharp\bin\Debug\LinqOptimizer.CSharp.dll</HintPath>
+      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.6.3\lib\LinqOptimizer.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="LinqOptimizer.CSharp, Version=0.6.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\LinqOptimizer.CSharp.0.6.3\lib\LinqOptimizer.CSharp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
