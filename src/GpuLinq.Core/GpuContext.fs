@@ -1,6 +1,7 @@
 ﻿namespace Nessos.GpuLinq.Core
     open System
     open System.Linq
+    open System.Linq.Expressions
     open System.Collections.Generic
     open System.Collections.Concurrent
     open System.Runtime.InteropServices
@@ -148,14 +149,14 @@
 
         let setKernelArgs (kernel : Kernel) (compilerResult : Compiler.CompilerResult) (argIndex : int ref) = 
             // Set Source Args
-            for input in compilerResult.SourceArgs do
+            for (_, input) in compilerResult.SourceArgs do
                 if input.Length <> 0 then 
                     addKernelBufferArg kernel argIndex (input.GetBuffer()) 
                 else incr argIndex 
                 
             // Set Value Args
-            for (value, t) in compilerResult.ValueArgs do
-                match t with
+            for (paramExpr, value) in compilerResult.ValueArgs do
+                match paramExpr.Type with
                 | TypeCheck Compiler.intType _ | TypeCheck Compiler.floatType _ ->  
                     incr argIndex 
                     match Cl.SetKernelArg(kernel, uint32 !argIndex, new IntPtr(4), value) with
@@ -166,7 +167,7 @@
                     if gpuArray.Length <> 0 then
                         addKernelBufferArg kernel argIndex (gpuArray.GetBuffer()) 
                     else incr argIndex
-                | _ -> failwithf "Not supported result type %A" t
+                | _ -> failwithf "Not supported result type %A" paramExpr.Type
 
         new() =
             new GpuContext(GpuCompileOptions.FastRelaxedMath ||| GpuCompileOptions.FusedMultiplyAdd)
@@ -192,6 +193,20 @@
                 | _, error -> failwithf "OpenCL.CreateBuffer failed with error code %A" error 
 
         /// <summary>
+        /// Compiles QueryExpr and returns a GpuKernel handle object
+        /// </summary>
+        /// <param name="gpuQuery">The query to be copied</param>
+        /// <returns>A GpuArray object</returns>
+        member self.CompileGpuKernel (gpuQuery : Expression<Func<'Arg, IGpuQueryExpr<'Result>>>) : GpuKernel<'Arg, 'Result> = 
+            match gpuQuery with
+            | Lambda (args, bodyExpr) ->
+                let queryExpr = Compiler.toQueryExpr bodyExpr
+                let compilerResult = Compiler.compile queryExpr
+                let kernel = createKernel compilerResult.Source
+                raise <| new NotImplementedException()
+            | _ -> failwithf "Invalid Expr %A" gpuQuery 
+
+        /// <summary>
         /// Compiles a gpu query to gpu kernel code, runs the kernel and fills with data the output gpuArray.
         /// </summary>
         /// <param name="gpuQuery">The query to run.</param>
@@ -208,13 +223,13 @@
             // Prepare query and execute 
             match compilerResult.ReductionType with
             | ReductionType.Map -> 
-                let input = compilerResult.SourceArgs.[0]
+                let (_, input) = compilerResult.SourceArgs.[0]
                 if input.Length = 0 then
                     ()
                 else
                     match compilerResult.SourceType with
                     | Compiler.SourceType.NestedSource ->
-                        let nestedInput = compilerResult.SourceArgs.[1]
+                        let (_, nestedInput) = compilerResult.SourceArgs.[1]
                         setKernelArg kernel argIndex input.Length    
                         setKernelArg kernel argIndex nestedInput.Length
                         addKernelBufferArg kernel argIndex (outputGpuArray.GetBuffer())
@@ -252,7 +267,7 @@
             // Prepare query and execute 
             match compilerResult.ReductionType with
             | ReductionType.NestedQueryTransform -> 
-                let input, nestedInput = compilerResult.SourceArgs.[0], compilerResult.SourceArgs.[1]
+                let (_, input), (_, nestedInput) = compilerResult.SourceArgs.[0], compilerResult.SourceArgs.[1]
                 let gpuArray = 
                     if input.Length = 0 then
                         createGpuArray queryExpr.Type env input.Length input.Capacity null 
@@ -273,7 +288,7 @@
                     gpuArray.ToArray() :> obj :?> _
                 | _ -> gpuArray :> obj :?> _
             | ReductionType.Map -> 
-                let input = compilerResult.SourceArgs.[0]
+                let (_, input) = compilerResult.SourceArgs.[0]
                 let gpuArray = 
                     if input.Length = 0 then
                         createGpuArray queryExpr.Type env input.Length input.Capacity null 
@@ -289,7 +304,7 @@
                                 createGpuArray queryExpr.Type env input.Length input.Capacity outputBuffer 
                             | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                         | Compiler.NestedSource ->
-                            let nestedInput = compilerResult.SourceArgs.[1]
+                            let (_, nestedInput) = compilerResult.SourceArgs.[1]
                             setKernelArg kernel argIndex input.Length
                             setKernelArg kernel argIndex nestedInput.Length
                             let outputBuffer = createBuffer queryExpr.Type env (input.Capacity * nestedInput.Capacity)
@@ -307,7 +322,7 @@
                     gpuArray.ToArray() :> obj :?> _
                 | _ -> gpuArray :> obj :?> _
             | ReductionType.Filter -> 
-                let input = compilerResult.SourceArgs.[0]
+                let (_, input) = compilerResult.SourceArgs.[0]
                 let gpuArray = 
                     if input.Length = 0 then
                         createGpuArray queryExpr.Type env input.Length input.Capacity null 
@@ -335,7 +350,7 @@
                     gpuArray.ToArray() :> obj :?> _
                 | _ -> gpuArray :> obj :?> _
             | ReductionType.Sum | ReductionType.Count ->
-                let gpuArray  = compilerResult.SourceArgs.[0]
+                let (_, gpuArray)  = compilerResult.SourceArgs.[0]
                 if gpuArray.Length = 0 then
                     0 :> obj :?> _
                 else

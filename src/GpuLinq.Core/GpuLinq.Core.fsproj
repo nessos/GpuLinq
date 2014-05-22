@@ -62,6 +62,7 @@
   <ItemGroup>
     <Compile Include="Math.fs" />
     <Compile Include="KernelTemplates.fs" />
+    <Compile Include="GpuKernel.fs" />
     <Compile Include="GpuArray.fs" />
     <Compile Include="GpuFunctionDependencyAnalysis.fs" />
     <Compile Include="FreeVariablesVisitor.fs" />
