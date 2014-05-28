@@ -7,7 +7,7 @@
     open Nessos.LinqOptimizer.Core
     open Nessos.LinqOptimizer.Core.Utils
 
-    module internal Compiler =
+    module Compiler =
         type Length = int
         type Size = int
 
@@ -58,7 +58,10 @@
             | MethodCall (_, MethodName "ToArray" _, [expr']) ->
                 ToArray(toQueryExpr expr')
             | MethodCall (_, MethodName "AsGpuQueryExpr" _, [expr']) ->
-                Source (expr', expr'.Type, QueryExprType.Gpu)
+                match expr'.Type with
+                | Named(typedef, [|elemType|]) when typedef = typedefof<IGpuArray<_>> -> 
+                    Source (expr', elemType, QueryExprType.Gpu)
+                | _ -> failwithf "Not supported %A" expr'.Type
             | _ -> failwithf "Not supported %A" expr
 
         let rec compile (queryExpr : QueryExpr) : CompilerResult = 
@@ -90,11 +93,11 @@
                         |> Seq.map (fun varExpr -> sprintf' "%s %s;" (typeToStr varExpr.Type) (varExprToStr varExpr vars)) 
                         |> Seq.fold (fun first second -> sprintf' "%s%s%s" first Environment.NewLine second) "" 
                     varsStr
-                let constantLifting (exprs : Expression list) = 
+                let argsLifting (vars : seq<ParameterExpression>) (exprs : Expression list) = 
                     match exprs with
                     | [] -> ([||], [||], [||])
                     | _ ->
-                        let expr, paramExprs, objs = ConstantLiftingTransformer.apply (block [] exprs) 
+                        let expr, paramExprs, objs = ArgsCollector.apply vars (block [] exprs) 
                         ((expr :?> BlockExpression).Expressions.ToArray(), paramExprs, objs)
                 let isCustomStruct (t : Type) = t.IsValueType && not t.IsPrimitive
                 let structToStr (t : Type) = 
@@ -324,17 +327,18 @@
                     let (gpuArrayParamExpr, gpuArray) =
                         match expr with
                         | Constant (value, Named (TypeCheck gpuArrayTypeDef _, [|_|])) -> (var "___input___" <| value.GetType()), value :?> IGpuArray 
-                        | FieldMember (expr, fieldMember) -> 
-                            raise <| new NotImplementedException()
+                        | FieldMember (_, _) -> 
+                            let _, [|gpuArrayParamExpr|], [|gpuArray|] = argsLifting context.VarExprs [expr]
+                            (gpuArrayParamExpr, gpuArray :?> IGpuArray)
                         | _ -> failwithf "Not supported %A" expr
-                    let exprs, paramExprs, values = constantLifting context.Exprs
-                    let vars = Seq.append paramExprs context.VarExprs
+                    let exprs, paramExprs, values = argsLifting context.VarExprs context.Exprs
+                    let vars = context.VarExprs
                     let paramExprs', values'  = QuerySubExpression.get isValidQueryExpr exprs 
                     let paramExprs, values = (Array.append paramExprs paramExprs'), (Array.append values values')
                     let headerStr = headerStr (TypeCollector.getTypes exprs, paramExprs, values)
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
-                    let argsStr = argsToStr paramExprs vars
+                    let argsStr = argsToStr paramExprs vars 
                     match context.ReductionType with
                     | ReductionType.Map ->
                         let source = KernelTemplates.mapTemplate headerStr sourceTypeStr argsStr resultTypeStr varsStr (varExprToStr context.CurrentVarExpr vars) exprsStr (varExprToStr context.AccVarExpr vars)
@@ -349,10 +353,10 @@
                     | _ -> failwithf "Not supported %A" context.ReductionType
                 | NestedQueryTransform ((_, Source (FieldMember (_, (Map fieldToType (Named (TypeCheck igpuArrayTypeDef _, [|_|])) as fieldInfo)) as nestedExpr, nestedSourceType, QueryExprType.Gpu)), projectLambdaExpr, 
                                             Source (expr, sourceType, QueryExprType.Gpu)) ->
-                    let exprs, paramExprs, values = constantLifting context.Exprs
+                    let exprs, paramExprs, values = argsLifting context.VarExprs context.Exprs
                     let vars = Seq.append paramExprs context.VarExprs
                     // Extract Nested GpuArray
-                    let _, [|nestedGpuArrayParamExpr|], [|nestedGpuArray|] = constantLifting ([nestedExpr])
+                    let _, [|nestedGpuArrayParamExpr|], [|nestedGpuArray|] = argsLifting vars [nestedExpr]
                     // EXtact projections
                     let firstParamExpr, secondParamExpr, projectExpr = 
                         match projectLambdaExpr with
@@ -403,7 +407,7 @@
                         | FieldMember (expr, fieldMember) -> 
                             raise <| new NotImplementedException()
                         | _ -> failwithf "Not supported %A" secondExpr
-                    let exprs, paramExprs, values = constantLifting context.Exprs
+                    let exprs, paramExprs, values = argsLifting vars context.Exprs
                     let vars = Seq.append paramExprs vars
                     let headerStr = headerStr (TypeCollector.getTypes context.Exprs, paramExprs, values)
                     let valueArgs = collectValueArgs (paramExprs, values) 

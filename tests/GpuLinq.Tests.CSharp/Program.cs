@@ -25,27 +25,33 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
         public static void Main(string[] args)
         {
-            
 
-            int[] xs = Enumerable.Range(0, 534).ToArray();
-                
-
-            using (var context = new GpuContext())
+            (new Tests.CSharp.GpuQueryTests()).InnerEnumerablePipeline();
+            return;
             {
-                using (var _xs = context.CreateGpuArray(xs))
+
+                int[] xs = Enumerable.Range(0, 534).ToArray();
+
+
+                using (var context = new GpuContext())
                 {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
 
 
-                    Expression<Func<int, IGpuQueryExpr<int>>> queryExpr = n =>
-                            _xs.AsGpuQueryExpr().Select(x => x * n).Sum();
+                        Expression<Func<int, IGpuQueryExpr<int>>> queryExpr = n =>
+                                _xs.AsGpuQueryExpr().Select(x => x * n).Sum();
 
-                    var kernel = context.CompileGpuKernel(queryExpr);
+                        using (var kernel = context.CompileGpuKernel(queryExpr))
+                        {
+                        }
 
-                        
+
+                    }
                 }
             }
-            
-            
+
+
         }
 
         static void Measure(Action action)

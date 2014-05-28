@@ -28,6 +28,7 @@
                 vars |> Seq.iter (fun p -> localVars.Add(p) |> ignore)
 
             member this.Environment with get () = freeVars :> seq<_>
+            member this.Locals with get() = localVars :> seq<_>
 
             override this.VisitParameter(expr : ParameterExpression) =
                 if not <| localVars.Contains(expr) then
@@ -90,6 +91,11 @@
             let fvv = new FreeVariablesVisitor()
             let expr = fvv.Visit(expr)
             fvv.Environment
+
+        let getLocals(expr : Expression) =
+            let fvv = new FreeVariablesVisitor()
+            let expr = fvv.Visit(expr)
+            fvv.Locals
 
         let getWithExpr(expr : Expression) =
             let fvv = new FreeVariablesVisitor()

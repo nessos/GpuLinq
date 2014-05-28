@@ -29,7 +29,7 @@
     type GpuContext(compileOptions : GpuCompileOptions) =
         // Context environment
         let env = "*".CreateCLEnvironment()
-        let cache = Dictionary<string, (Program * Kernel)>()
+        let cache = Dictionary<string, (Program * IGpuKernel)>()
         let buffers = new System.Collections.Generic.List<IGpuArray>()
         let maxGroupSize = 
                         match Cl.GetDeviceInfo(env.Devices.[0], DeviceInfo.MaxWorkGroupSize) with
@@ -116,13 +116,13 @@
                 result.ToArray() :> _
             | _ -> failwithf "Not supported result type %A" t
 
-        let createKernel source =
-            if cache.ContainsKey(source) then
-                let (_, kernel) = cache.[source]
+        let createKernel(compilerResult : Compiler.CompilerResult) (createGpuKernel : Kernel -> IGpuKernel) : IGpuKernel =
+            if cache.ContainsKey(compilerResult.Source) then
+                let (_, kernel) = cache.[compilerResult.Source]
                 kernel
             else
                 let program, kernel = 
-                    match Cl.CreateProgramWithSource(env.Context, 1u, [| source |], null) with
+                    match Cl.CreateProgramWithSource(env.Context, 1u, [| compilerResult.Source |], null) with
                     | program, ErrorCode.Success ->
                         match Cl.BuildProgram(program, uint32 env.Devices.Length, env.Devices, compileOptionsToString compileOptions, null, IntPtr.Zero) with
                         | ErrorCode.Success -> 
@@ -132,7 +132,8 @@
                             | _, error -> failwithf "OpenCL.CreateKernel failed with error code %A" error
                         | error -> failwithf "OpenCL.BuildProgram failed with error code %A" error
                     | _, error -> failwithf "OpenCL.CreateProgramWithSource failed with error code %A" error
-                cache.Add(source, (program, kernel))
+                let kernel = createGpuKernel kernel 
+                cache.Add(compilerResult.Source, (program, kernel))
                 kernel
 
         let addKernelBufferArg (kernel : Kernel) (argIndex : int ref) (buffer : IMem) = 
@@ -202,8 +203,8 @@
             | Lambda (args, bodyExpr) ->
                 let queryExpr = Compiler.toQueryExpr bodyExpr
                 let compilerResult = Compiler.compile queryExpr
-                let kernel = createKernel compilerResult.Source
-                raise <| new NotImplementedException()
+                let kernel = createKernel compilerResult (fun kernel -> new GpuKernel<'Arg, 'Result>(kernel, compilerResult) :> _)
+                kernel :?> _
             | _ -> failwithf "Invalid Expr %A" gpuQuery 
 
         /// <summary>
@@ -215,7 +216,7 @@
         member self.Fill<'T>(gpuQuery : IGpuQueryExpr<IGpuArray<'T>>, outputGpuArray : IGpuArray<'T>) : unit =
             let queryExpr = gpuQuery.Expr
             let compilerResult = Compiler.compile queryExpr
-            let kernel = createKernel compilerResult.Source
+            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, compilerResult) :> _)).Kernel
 
             // Set Kernel Args
             let argIndex = ref -1
@@ -258,7 +259,7 @@
 
             let queryExpr = gpuQuery.Expr
             let compilerResult = Compiler.compile queryExpr
-            let kernel = createKernel compilerResult.Source
+            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, compilerResult) :> _)).Kernel
 
             // Set Kernel Args
             let argIndex = ref -1
