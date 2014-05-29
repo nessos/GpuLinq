@@ -193,19 +193,38 @@
                     gpuArray :> _
                 | _, error -> failwithf "OpenCL.CreateBuffer failed with error code %A" error 
 
+        member private self.Compile (gpuQuery : Expression, f : Kernel -> seq<ParameterExpression> -> Compiler.CompilerResult -> IGpuKernel) : IGpuKernel = 
+            match gpuQuery with
+            | Lambda (args, bodyExpr) ->
+                let queryExpr = Compiler.toQueryExpr bodyExpr
+                let compilerResult = Compiler.compile queryExpr
+                let kernel = createKernel compilerResult (fun kernel -> f kernel args compilerResult)
+                kernel 
+            | _ -> failwithf "Invalid Expr %A" gpuQuery 
         /// <summary>
         /// Compiles QueryExpr and returns a GpuKernel handle object
         /// </summary>
         /// <param name="gpuQuery">The query to be copied</param>
         /// <returns>A GpuArray object</returns>
-        member self.CompileGpuKernel (gpuQuery : Expression<Func<'Arg, IGpuQueryExpr<'Result>>>) : GpuKernel<'Arg, 'Result> = 
-            match gpuQuery with
-            | Lambda (args, bodyExpr) ->
-                let queryExpr = Compiler.toQueryExpr bodyExpr
-                let compilerResult = Compiler.compile queryExpr
-                let kernel = createKernel compilerResult (fun kernel -> new GpuKernel<'Arg, 'Result>(kernel, compilerResult) :> _)
-                kernel :?> _
-            | _ -> failwithf "Invalid Expr %A" gpuQuery 
+        member self.Compile (gpuQuery : Expression<Func<'Arg, IGpuQueryExpr<'Result>>>) : GpuKernel<'Arg, 'Result> = 
+            self.Compile(gpuQuery, 
+                            (fun kernel args compilerResult -> new GpuKernel<'Arg, 'Result>(kernel, args, compilerResult) :> _)) :?> GpuKernel<'Arg, 'Result>
+        /// <summary>
+        /// Compiles QueryExpr and returns a GpuKernel handle object
+        /// </summary>
+        /// <param name="gpuQuery">The query to be copied</param>
+        /// <returns>A GpuArray object</returns>
+        member self.Compile (gpuQuery : Expression<Func<'Arg1, 'Arg2, IGpuQueryExpr<'Result>>>) : GpuKernel<'Arg1, 'Arg2, 'Result> = 
+            self.Compile(gpuQuery, 
+                            (fun kernel args compilerResult -> new GpuKernel<'Arg1, 'Arg2, 'Result>(kernel, args, compilerResult) :> _)) :?> GpuKernel<'Arg1, 'Arg2, 'Result>
+        /// <summary>
+        /// Compiles QueryExpr and returns a GpuKernel handle object
+        /// </summary>
+        /// <param name="gpuQuery">The query to be copied</param>
+        /// <returns>A GpuArray object</returns>
+        member self.Compile (gpuQuery : Expression<Func<'Arg1, 'Arg2, 'Arg3, IGpuQueryExpr<'Result>>>) : GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result> = 
+            self.Compile(gpuQuery, 
+                            (fun kernel args compilerResult -> new GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result>(kernel, args, compilerResult) :> _)) :?> GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result>
 
         /// <summary>
         /// Compiles a gpu query to gpu kernel code, runs the kernel and fills with data the output gpuArray.
@@ -216,7 +235,7 @@
         member self.Fill<'T>(gpuQuery : IGpuQueryExpr<IGpuArray<'T>>, outputGpuArray : IGpuArray<'T>) : unit =
             let queryExpr = gpuQuery.Expr
             let compilerResult = Compiler.compile queryExpr
-            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, compilerResult) :> _)).Kernel
+            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, [||], compilerResult) :> _)).Kernel
 
             // Set Kernel Args
             let argIndex = ref -1
@@ -259,7 +278,7 @@
 
             let queryExpr = gpuQuery.Expr
             let compilerResult = Compiler.compile queryExpr
-            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, compilerResult) :> _)).Kernel
+            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, [||], compilerResult) :> _)).Kernel
 
             // Set Kernel Args
             let argIndex = ref -1
