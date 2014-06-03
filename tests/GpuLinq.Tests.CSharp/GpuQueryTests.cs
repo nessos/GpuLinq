@@ -15,6 +15,7 @@ using SMath = Nessos.GpuLinq.Core.Functions.Math;
 using OpenCL.Net.Extensions;
 using OpenCL.Net;
 using System.IO;
+using Nessos.GpuLinq.Base;
 
 
 namespace Nessos.GpuLinq.Tests.CSharp
@@ -560,6 +561,27 @@ namespace Nessos.GpuLinq.Tests.CSharp
                                          select test + 1).ToArray();;
 
                         return gpuResult.SequenceEqual(cpuResult);
+                    }
+                }).QuickCheckThrowOnFailure();
+            }
+        }
+
+        [Test]
+        public void CompiledKernel()
+        {
+            using (var context = new GpuContext())
+            {
+                Expression<Func<int, IGpuArray<int>, IGpuQueryExpr<int>>> queryExpr = (n, _xs) =>
+                    _xs.AsGpuQueryExpr().Select(x => x * n).Sum();
+                var kernel = context.Compile(queryExpr);
+                int _n = 42;
+                Spec.ForAny<int[]>(xs =>
+                {
+                    using (var _xs = context.CreateGpuArray(xs))
+                    {
+                        var gpuResult = context.Run(kernel, _n, _xs);
+                        var cpuResult = xs.Select(x => x * _n).Sum();
+                        return gpuResult == cpuResult;
                     }
                 }).QuickCheckThrowOnFailure();
             }

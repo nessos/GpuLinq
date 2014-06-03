@@ -99,6 +99,9 @@
                     | _ ->
                         let expr, paramExprs, objs = ArgsCollector.apply vars (block [] exprs) 
                         ((expr :?> BlockExpression).Expressions.ToArray(), paramExprs, objs)
+                let argLifting (vars : seq<ParameterExpression>) (expr : Expression) = 
+                    let expr, paramExprs, objs = ArgsCollector.apply vars (block [] [expr]) 
+                    ((expr :?> BlockExpression).Expressions.ToArray(), (paramExprs |> Seq.head), (objs |> Seq.head))
                 let isCustomStruct (t : Type) = t.IsValueType && not t.IsPrimitive
                 let structToStr (t : Type) = 
                     let fields = t.GetFields().OrderBy(fun f -> Marshal.OffsetOf(t, f.Name).ToInt32()).ToArray()
@@ -328,8 +331,9 @@
                         match expr with
                         | Constant (value, Named (TypeCheck gpuArrayTypeDef _, [|_|])) -> (var "___input___" <| value.GetType()), value :?> IGpuArray 
                         | FieldMember (_, _) -> 
-                            let _, [|gpuArrayParamExpr|], [|gpuArray|] = argsLifting context.VarExprs [expr]
+                            let _, gpuArrayParamExpr, gpuArray = argLifting context.VarExprs expr
                             (gpuArrayParamExpr, gpuArray :?> IGpuArray)
+                        | Parameter gpuArrayParamExpr -> (gpuArrayParamExpr, Unchecked.defaultof<IGpuArray>)
                         | _ -> failwithf "Not supported %A" expr
                     let exprs, paramExprs, values = argsLifting context.VarExprs context.Exprs
                     let vars = context.VarExprs
@@ -356,7 +360,7 @@
                     let exprs, paramExprs, values = argsLifting context.VarExprs context.Exprs
                     let vars = Seq.append paramExprs context.VarExprs
                     // Extract Nested GpuArray
-                    let _, [|nestedGpuArrayParamExpr|], [|nestedGpuArray|] = argsLifting vars [nestedExpr]
+                    let _, nestedGpuArrayParamExpr, nestedGpuArray = argLifting vars nestedExpr
                     // EXtact projections
                     let firstParamExpr, secondParamExpr, projectExpr = 
                         match projectLambdaExpr with
@@ -373,8 +377,10 @@
                     let (gpuArrayParamExpr, gpuArray) =
                         match expr with
                         | Constant (value, Named (TypeCheck gpuArrayTypeDef _, [|_|])) -> (var "___input___" <| value.GetType()), value :?> IGpuArray 
-                        | FieldMember (expr, fieldMember) -> 
-                            raise <| new NotImplementedException()
+                        | FieldMember (_, _) -> 
+                            let _, gpuArrayParamExpr, gpuArray = argLifting context.VarExprs expr
+                            (gpuArrayParamExpr, gpuArray :?> IGpuArray)
+                        | Parameter gpuArrayParamExpr -> (gpuArrayParamExpr, Unchecked.defaultof<IGpuArray>)
                         | _ -> failwithf "Not supported %A" expr
                     let headerStr = headerStr (TypeCollector.getTypes exprs, (paramExprs), values)
                     let valueArgs = collectValueArgs (paramExprs, values) 
@@ -398,14 +404,18 @@
                     let (firstGpuArrayParamExpr, firstGpuArray) =
                         match firstExpr with
                         | Constant (value, Named (TypeCheck gpuArrayTypeDef _, [|_|])) -> (var "___input___" <| value.GetType()), value :?> IGpuArray 
-                        | FieldMember (expr, fieldMember) -> 
-                            raise <| new NotImplementedException()
+                        | FieldMember (_, _) -> 
+                            let _, gpuArrayParamExpr, gpuArray = argLifting context.VarExprs firstExpr
+                            (gpuArrayParamExpr, gpuArray :?> IGpuArray)
+                        | Parameter gpuArrayParamExpr -> (gpuArrayParamExpr, Unchecked.defaultof<IGpuArray>)
                         | _ -> failwithf "Not supported %A" firstExpr
                     let (secondGpuArrayParamExpr, secondGpuArray) =
                         match secondExpr with
                         | Constant (value, Named (TypeCheck gpuArrayTypeDef _, [|_|])) -> (var "___input___" <| value.GetType()), value :?> IGpuArray 
-                        | FieldMember (expr, fieldMember) -> 
-                            raise <| new NotImplementedException()
+                        | FieldMember (_, _) -> 
+                            let _, gpuArrayParamExpr, gpuArray = argLifting context.VarExprs secondExpr
+                            (gpuArrayParamExpr, gpuArray :?> IGpuArray)
+                        | Parameter gpuArrayParamExpr -> (gpuArrayParamExpr, Unchecked.defaultof<IGpuArray>)
                         | _ -> failwithf "Not supported %A" secondExpr
                     let exprs, paramExprs, values = argsLifting vars context.Exprs
                     let vars = Seq.append paramExprs vars

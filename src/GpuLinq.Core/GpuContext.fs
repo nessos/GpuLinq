@@ -193,12 +193,12 @@
                     gpuArray :> _
                 | _, error -> failwithf "OpenCL.CreateBuffer failed with error code %A" error 
 
-        member private self.Compile (gpuQuery : Expression, f : Kernel -> seq<ParameterExpression> -> Compiler.CompilerResult -> IGpuKernel) : IGpuKernel = 
+        member private self.Compile (gpuQuery : Expression, f : Kernel -> seq<ParameterExpression> -> QueryExpr -> Compiler.CompilerResult -> IGpuKernel) : IGpuKernel = 
             match gpuQuery with
             | Lambda (args, bodyExpr) ->
                 let queryExpr = Compiler.toQueryExpr bodyExpr
                 let compilerResult = Compiler.compile queryExpr
-                let kernel = createKernel compilerResult (fun kernel -> f kernel args compilerResult)
+                let kernel = createKernel compilerResult (fun kernel -> f kernel args queryExpr compilerResult)
                 kernel 
             | _ -> failwithf "Invalid Expr %A" gpuQuery 
         /// <summary>
@@ -208,7 +208,7 @@
         /// <returns>A GpuArray object</returns>
         member self.Compile (gpuQuery : Expression<Func<'Arg, IGpuQueryExpr<'Result>>>) : GpuKernel<'Arg, 'Result> = 
             self.Compile(gpuQuery, 
-                            (fun kernel args compilerResult -> new GpuKernel<'Arg, 'Result>(kernel, args, compilerResult) :> _)) :?> GpuKernel<'Arg, 'Result>
+                            (fun kernel args queryExpr compilerResult -> new GpuKernel<'Arg, 'Result>(kernel, args, queryExpr, compilerResult) :> _)) :?> GpuKernel<'Arg, 'Result>
         /// <summary>
         /// Compiles QueryExpr and returns a GpuKernel handle object
         /// </summary>
@@ -216,7 +216,7 @@
         /// <returns>A GpuArray object</returns>
         member self.Compile (gpuQuery : Expression<Func<'Arg1, 'Arg2, IGpuQueryExpr<'Result>>>) : GpuKernel<'Arg1, 'Arg2, 'Result> = 
             self.Compile(gpuQuery, 
-                            (fun kernel args compilerResult -> new GpuKernel<'Arg1, 'Arg2, 'Result>(kernel, args, compilerResult) :> _)) :?> GpuKernel<'Arg1, 'Arg2, 'Result>
+                            (fun kernel args queryExpr compilerResult -> new GpuKernel<'Arg1, 'Arg2, 'Result>(kernel, args, queryExpr, compilerResult) :> _)) :?> GpuKernel<'Arg1, 'Arg2, 'Result>
         /// <summary>
         /// Compiles QueryExpr and returns a GpuKernel handle object
         /// </summary>
@@ -224,7 +224,7 @@
         /// <returns>A GpuArray object</returns>
         member self.Compile (gpuQuery : Expression<Func<'Arg1, 'Arg2, 'Arg3, IGpuQueryExpr<'Result>>>) : GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result> = 
             self.Compile(gpuQuery, 
-                            (fun kernel args compilerResult -> new GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result>(kernel, args, compilerResult) :> _)) :?> GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result>
+                            (fun kernel args queryExpr compilerResult -> new GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result>(kernel, args, queryExpr, compilerResult) :> _)) :?> GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result>
 
         /// <summary>
         /// Compiles a gpu query to gpu kernel code, runs the kernel and fills with data the output gpuArray.
@@ -235,7 +235,7 @@
         member self.Fill<'T>(gpuQuery : IGpuQueryExpr<IGpuArray<'T>>, outputGpuArray : IGpuArray<'T>) : unit =
             let queryExpr = gpuQuery.Expr
             let compilerResult = Compiler.compile queryExpr
-            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, [||], compilerResult) :> _)).Kernel
+            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, [||], queryExpr, compilerResult) :> _)).Kernel
 
             // Set Kernel Args
             let argIndex = ref -1
@@ -269,17 +269,8 @@
                     
             | reductionType -> failwith "Invalid ReductionType %A" reductionType
 
-        /// <summary>
-        /// Compiles a gpu query to gpu kernel code, runs the kernel and returns the result.
-        /// </summary>
-        /// <param name="gpuQuery">The query to run.</param>
-        /// <returns>The result of the query.</returns>
-        member self.Run<'TQuery> (gpuQuery : IGpuQueryExpr<'TQuery>) : 'TQuery =
 
-            let queryExpr = gpuQuery.Expr
-            let compilerResult = Compiler.compile queryExpr
-            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, [||], compilerResult) :> _)).Kernel
-
+        member private self.Run(kernel : Kernel, queryExpr : QueryExpr, compilerResult : Compiler.CompilerResult) : obj = 
             // Set Kernel Args
             let argIndex = ref -1
             setKernelArgs kernel compilerResult argIndex
@@ -305,8 +296,8 @@
                 match queryExpr with
                 | ToArray (_) -> 
                     use gpuArray = gpuArray
-                    gpuArray.ToArray() :> obj :?> _
-                | _ -> gpuArray :> obj :?> _
+                    gpuArray.ToArray() :> obj 
+                | _ -> gpuArray :> obj 
             | ReductionType.Map -> 
                 let (_, input) = compilerResult.SourceArgs.[0]
                 let gpuArray = 
@@ -339,8 +330,8 @@
                 match queryExpr with
                 | ToArray (_) -> 
                     use gpuArray = gpuArray
-                    gpuArray.ToArray() :> obj :?> _
-                | _ -> gpuArray :> obj :?> _
+                    gpuArray.ToArray() :> obj 
+                | _ -> gpuArray :> obj 
             | ReductionType.Filter -> 
                 let (_, input) = compilerResult.SourceArgs.[0]
                 let gpuArray = 
@@ -367,12 +358,12 @@
                 match queryExpr with
                 | ToArray (_) -> 
                     use gpuArray = gpuArray
-                    gpuArray.ToArray() :> obj :?> _
-                | _ -> gpuArray :> obj :?> _
+                    gpuArray.ToArray() :> obj 
+                | _ -> gpuArray :> obj 
             | ReductionType.Sum | ReductionType.Count ->
                 let (_, gpuArray)  = compilerResult.SourceArgs.[0]
                 if gpuArray.Length = 0 then
-                    0 :> obj :?> _
+                    0 :> obj 
                 else
 
                     let (maxGroupSize, outputLength) = if gpuArray.Capacity < maxGroupSize then (gpuArray.Capacity, 1)
@@ -393,15 +384,67 @@
                             readFromBuffer env.CommandQueues.[0] queryExpr.Type outputBuffer output 
                             match queryExpr.Type with
                             | TypeCheck Compiler.intType _ ->
-                                (output :?> int[]).Sum() :> obj :?> _ 
+                                (output :?> int[]).Sum() :> obj  
                             | TypeCheck Compiler.floatType _ ->  
-                                (output :?> System.Single[]).Sum() :> obj :?> _  
+                                (output :?> System.Single[]).Sum() :> obj   
                             | TypeCheck Compiler.doubleType _ ->  
-                                (output :?> System.Double[]).Sum() :> obj :?> _  
+                                (output :?> System.Double[]).Sum() :> obj   
                             | t -> failwithf "Not supported result type %A" t
                         | error, _  -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
                     | error -> failwithf "OpenCL.SetKernelArg failed with error code %A" error
             | reductionType -> failwithf "Invalid ReductionType %A" reductionType
+
+
+        member self.Run(kernel : IGpuKernel, args : obj[]) : obj = 
+            let sourceArgs = Array.copy kernel.CompilerResult.SourceArgs
+            let valueArgs = Array.copy kernel.CompilerResult.ValueArgs
+            (kernel.Args, args)
+            ||> Seq.zip
+            |> Seq.iter (fun (kernelArg, valueArg) -> 
+                kernel.CompilerResult.SourceArgs 
+                |> Seq.iteri (fun i (sourceArg, gpuArray) -> 
+                    if sourceArg = kernelArg && gpuArray = Unchecked.defaultof<IGpuArray> then
+                         sourceArgs.[i] <- (sourceArg, valueArg :?> IGpuArray))
+
+                kernel.CompilerResult.ValueArgs
+                |> Seq.iteri (fun i (sourceArg, value) -> 
+                    if sourceArg = kernelArg && value = null then
+                         valueArgs.[i] <- (sourceArg, valueArg))
+                )
+            self.Run(kernel.Kernel, kernel.Query, { kernel.CompilerResult with SourceArgs = sourceArgs; ValueArgs = valueArgs })
+            
+        /// <summary>
+        /// Runs the kernel and returns the result.
+        /// </summary>
+        /// <param name="kernel">The kernel to run.</param>
+        /// <param name="arg1">Kernel argument1.</param>
+        /// <param name="arg2">Kernel argument2.</param>
+        /// <returns>The result of the kernel.</returns>
+        member self.Run<'Arg1, 'Arg2, 'Result> (kernel : GpuKernel<'Arg1, 'Arg2, 'Result>, arg1 : 'Arg1, arg2 : 'Arg2) : 'Result =
+            self.Run(kernel :> IGpuKernel, [|arg1 :> obj; arg2 :> obj|]) :?> _
+
+        /// <summary>
+        /// Runs the kernel and returns the result.
+        /// </summary>
+        /// <param name="kernel">The kernel to run.</param>
+        /// <param name="arg">Kernel argument.</param>
+        /// <returns>The result of the kernel.</returns>
+        member self.Run<'Arg, 'Result> (kernel : GpuKernel<'Arg, 'Result>, arg : 'Arg) : 'Result =
+            self.Run(kernel :> IGpuKernel, [|arg :> obj|]) :?> _
+
+            
+
+        /// <summary>
+        /// Compiles a gpu query to gpu kernel code, runs the kernel and returns the result.
+        /// </summary>
+        /// <param name="gpuQuery">The query to run.</param>
+        /// <returns>The result of the query.</returns>
+        member self.Run<'TQuery> (gpuQuery : IGpuQueryExpr<'TQuery>) : 'TQuery =
+            let queryExpr = gpuQuery.Expr
+            let compilerResult = Compiler.compile queryExpr
+            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, [||], queryExpr, compilerResult) :> _)).Kernel
+            self.Run(kernel, queryExpr, compilerResult) :?> _
+            
 
 
         interface System.IDisposable with 
