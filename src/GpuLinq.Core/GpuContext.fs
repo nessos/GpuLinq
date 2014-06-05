@@ -26,9 +26,9 @@
     /// <summary>
     /// A scoped Context that manages GPU kernel execution and caching  
     /// </summary>
-    type GpuContext(compileOptions : GpuCompileOptions) =
+    type GpuContext(platformWildCard : string, compileOptions : GpuCompileOptions) =
         // Context environment
-        let env = "*".CreateCLEnvironment()
+        let env = platformWildCard.CreateCLEnvironment()
         let cache = Dictionary<string, (Program * IGpuKernel)>()
         let buffers = new System.Collections.Generic.List<IGpuArray>()
         let maxGroupSize = 
@@ -170,8 +170,10 @@
                     else incr argIndex
                 | _ -> failwithf "Not supported result type %A" paramExpr.Type
 
+        new(platformWildCard : string) =
+            new GpuContext(platformWildCard, GpuCompileOptions.FastRelaxedMath ||| GpuCompileOptions.FusedMultiplyAdd)
         new() =
-            new GpuContext(GpuCompileOptions.FastRelaxedMath ||| GpuCompileOptions.FusedMultiplyAdd)
+            new GpuContext("*", GpuCompileOptions.FastRelaxedMath ||| GpuCompileOptions.FusedMultiplyAdd)
 
         /// <summary>
         /// Creates a GpuArray 

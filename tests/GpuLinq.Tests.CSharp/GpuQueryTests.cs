@@ -23,10 +23,12 @@ namespace Nessos.GpuLinq.Tests.CSharp
     [TestFixture]
     class GpuQueryTests
     {
+        string platformWildCard = "*";
+
         [Test]
         public void Select()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -44,7 +46,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void Pipelined()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -68,7 +70,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void Where()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -92,7 +94,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void Sum()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
 
                 Spec.ForAny<int[]>(xs =>
@@ -114,7 +116,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void Count()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
 
                 Spec.ForAny<int[]>(xs =>
@@ -138,7 +140,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void ToArray()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -155,7 +157,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void Zip()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(ms =>
                 {
@@ -173,7 +175,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void ZipWithFilter()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(ms =>
                 {
@@ -191,7 +193,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void ZipWithReduction()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(ms =>
                 {
@@ -210,7 +212,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void LinqLet()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(nums =>
                 {
@@ -254,7 +256,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void Structs()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(nums =>
                 {
@@ -280,7 +282,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void ConstantLifting()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(nums =>
                 {
@@ -306,7 +308,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void GpuArrayIndexer()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int>(n =>
                 {
@@ -335,7 +337,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void MathFunctionsSingle()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -367,7 +369,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void Fill()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -388,7 +390,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void FunctionSplicing()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -419,7 +421,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void FunctionSplicingVariadic()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -452,7 +454,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void TernaryIfElse()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -479,7 +481,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void SelectMany()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -507,7 +509,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void SelectManyWithLet()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -536,7 +538,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void InnerEnumerablePipeline()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Spec.ForAny<int[]>(xs =>
                 {
@@ -569,7 +571,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         [Test]
         public void CompiledKernel()
         {
-            using (var context = new GpuContext())
+            using (var context = new GpuContext(platformWildCard))
             {
                 Expression<Func<int, IGpuArray<int>, IGpuQueryExpr<int>>> queryExpr = (n, _xs) =>
                     _xs.AsGpuQueryExpr().Select(x => x * n).Sum();

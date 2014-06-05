@@ -25,14 +25,14 @@ namespace Nessos.GpuLinq.Tests.CSharp
 
         public static void Main(string[] args)
         {
-            (new GpuQueryTests()).CompiledKernel();
-            return;
+            
+            
             {
 
-                int[] xs = new int[] { -1, -1 };
+                int[] xs = Enumerable.Range(1, 1000000).ToArray();
 
 
-                using (var context = new GpuContext())
+                using (var context = new GpuContext("Intel*"))
                 {
                     Expression<Func<int, IGpuArray<int>, IGpuQueryExpr<int>>> queryExpr = (n, _xs) =>
                                 _xs.AsGpuQueryExpr().Select(x => x * n).Sum();
@@ -42,7 +42,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
                     {
                         using (var kernel = context.Compile(queryExpr))
                         {
-                            var result = context.Run(kernel, 42, _xs);
+                            var result = context.Run(kernel, 2, _xs);
                             
                         }
 
