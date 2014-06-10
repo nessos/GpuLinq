@@ -23,7 +23,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
     [TestFixture]
     class GpuQueryTests
     {
-        string platformWildCard = "*";
+        static string platformWildCard = "*";
 
         [Test]
         public void Select()
@@ -38,7 +38,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
                         var y = xs.Select(n => n * 2).ToArray();
                         return x.SequenceEqual(y);
                     }
-                }).QuickCheckThrowOnFailure();    
+                }).QuickCheckThrowOnFailure();
             }
         }
 
@@ -110,6 +110,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
                         return x == y;
                     }
                 }).QuickCheckThrowOnFailure();
+                
             }
         }
 
@@ -590,7 +591,7 @@ namespace Nessos.GpuLinq.Tests.CSharp
         }
 
         #region Helpers
-        OpenCL.Net.Environment env = "*".CreateCLEnvironment();
+        OpenCL.Net.Environment env = platformWildCard.CreateCLEnvironment();
 
         public float [] MathFunctionsSingleTest(int[] input)
         {

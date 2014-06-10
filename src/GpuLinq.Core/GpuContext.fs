@@ -79,6 +79,9 @@
             | TypeCheck Compiler.intType _ -> 
                 let output = output :?> int[]
                 queue.ReadFromBuffer(outputBuffer, output, 0, int64 output.Length)
+            | TypeCheck Compiler.longType _ -> 
+                let output = output :?> int64[]
+                queue.ReadFromBuffer(outputBuffer, output, 0, int64 output.Length)
             | TypeCheck Compiler.floatType _ ->  
                 let output = output :?> single[]
                 queue.ReadFromBuffer(outputBuffer, output, 0, int64 output.Length)
@@ -365,9 +368,12 @@
             | ReductionType.Sum | ReductionType.Count ->
                 let (_, gpuArray)  = compilerResult.SourceArgs.[0]
                 if gpuArray.Length = 0 then
-                    0 :> obj 
+                    match queryExpr.Type with
+                    | TypeCheck Compiler.intType _ -> 0 :> _
+                    | TypeCheck Compiler.longType _ -> 0L :> _
+                    | TypeCheck Compiler.floatType _ -> 0.0f :> _
+                    | TypeCheck Compiler.doubleType _ -> 0.0 :> _
                 else
-
                     let (maxGroupSize, outputLength) = if gpuArray.Capacity < maxGroupSize then (gpuArray.Capacity, 1)
                                                        else (maxGroupSize, gpuArray.Capacity / maxGroupSize)
 
@@ -387,6 +393,8 @@
                             match queryExpr.Type with
                             | TypeCheck Compiler.intType _ ->
                                 (output :?> int[]).Sum() :> obj  
+                            | TypeCheck Compiler.longType _ ->
+                                (output :?> int64[]).Sum() :> obj  
                             | TypeCheck Compiler.floatType _ ->  
                                 (output :?> System.Single[]).Sum() :> obj   
                             | TypeCheck Compiler.doubleType _ ->  

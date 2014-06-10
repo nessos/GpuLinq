@@ -130,6 +130,16 @@ namespace Nessos.GpuLinq.CSharp
         }
 
         /// <summary>
+        /// Creates a new query that computes the sum of a sequence of long values.
+        /// </summary>
+        /// <param name="query">A query whose sequence of int values to calculate the sum of.</param>
+        /// <returns>A query that returns the sum of the values in the gpu array.</returns>
+        public static IGpuQueryExpr<long> Sum(this IGpuQueryExpr<IGpuArray<long>> query)
+        {
+            return new GpuQueryExpr<long>(QueryExpr.NewSum(query.Expr));
+        }
+
+        /// <summary>
         /// Creates a new query that computes the sum of a sequence of float values.
         /// </summary>
         /// <param name="query">A query whose sequence of int values to calculate the sum of.</param>

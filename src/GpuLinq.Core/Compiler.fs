@@ -20,6 +20,7 @@
         type CompilerResult = { Source : string; SourceType : SourceType; ReductionType : ReductionType; SourceArgs : (ParameterExpression * IGpuArray) []; ValueArgs : (ParameterExpression * obj) [] }
         
         let intType = typeof<int>
+        let longType = typeof<int64>
         let floatType = typeof<single>
         let doubleType = typeof<double>
         let byteType = typeof<byte>
@@ -70,6 +71,7 @@
                 let rec typeToStr (t : Type) = 
                     match t with
                     | TypeCheck intType _ -> "int"
+                    | TypeCheck longType _ -> "long"
                     | TypeCheck floatType _ -> "float"
                     | TypeCheck doubleType _ -> "double"
                     | TypeCheck byteType _ -> "byte"
