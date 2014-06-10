@@ -374,6 +374,10 @@
                     | TypeCheck Compiler.floatType _ -> 0.0f :> _
                     | TypeCheck Compiler.doubleType _ -> 0.0 :> _
                 else
+                    let maxGroupSize = 
+                        match Cl.GetKernelWorkGroupInfo(kernel, env.Devices.[0], KernelWorkGroupInfo.WorkGroupSize) with
+                        | info, ErrorCode.Success -> info.CastTo<int>()
+                        | error -> failwithf "OpenCL.GetKernelWorkGroupInfo failed with error code %A" error
                     let (maxGroupSize, outputLength) = if gpuArray.Capacity < maxGroupSize then (gpuArray.Capacity, 1)
                                                        else (maxGroupSize, gpuArray.Capacity / maxGroupSize)
 
