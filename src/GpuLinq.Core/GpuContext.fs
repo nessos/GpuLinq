@@ -331,7 +331,6 @@
                                 env.CommandQueues.[0].Finish() |> ignore
                                 createGpuArray queryExpr.Type env (input.Length * nestedInput.Length) (input.Capacity * nestedInput.Capacity) outputBuffer 
                             | _, error -> failwithf "OpenCL.EnqueueNDRangeKernel failed with error code %A" error
-                        | _ -> failwithf "Not supported %A" compilerResult.SourceType
                 match queryExpr with
                 | ToArray (_) -> 
                     use gpuArray = gpuArray
@@ -373,6 +372,7 @@
                     | TypeCheck Compiler.longType _ -> 0L :> _
                     | TypeCheck Compiler.floatType _ -> 0.0f :> _
                     | TypeCheck Compiler.doubleType _ -> 0.0 :> _
+                    | _ -> failwithf "Not supported %A" queryExpr.Type 
                 else
                     let maxGroupSize = 
                         match Cl.GetKernelWorkGroupInfo(kernel, env.Devices.[0], KernelWorkGroupInfo.WorkGroupSize) with
