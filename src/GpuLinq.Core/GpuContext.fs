@@ -231,17 +231,9 @@
             self.Compile(gpuQuery, 
                             (fun kernel args queryExpr compilerResult -> new GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result>(kernel, args, queryExpr, compilerResult) :> _)) :?> GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result>
 
-        /// <summary>
-        /// Compiles a gpu query to gpu kernel code, runs the kernel and fills with data the output gpuArray.
-        /// </summary>
-        /// <param name="gpuQuery">The query to run.</param>
-        /// <param name="outputGpuArray">The gpuArray to be filled.</param>
-        /// <returns>void</returns>            
-        member self.Fill<'T>(gpuQuery : IGpuQueryExpr<IGpuArray<'T>>, outputGpuArray : IGpuArray<'T>) : unit =
-            let queryExpr = gpuQuery.Expr
-            let compilerResult = Compiler.compile queryExpr
-            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, [||], queryExpr, compilerResult) :> _)).Kernel
 
+
+        member private self.Fill(kernel : Kernel, queryExpr : QueryExpr, compilerResult : Compiler.CompilerResult, outputGpuArray : IGpuArray) : unit = 
             // Set Kernel Args
             let argIndex = ref -1
             setKernelArgs kernel compilerResult argIndex
@@ -273,6 +265,67 @@
                     
                     
             | reductionType -> failwith "Invalid ReductionType %A" reductionType
+
+        member private self.Fill(kernel : IGpuKernel, outputGpuArray : IGpuArray, args : obj[]) : unit = 
+            let sourceArgs = Array.copy kernel.CompilerResult.SourceArgs
+            let valueArgs = Array.copy kernel.CompilerResult.ValueArgs
+            (kernel.Args, args)
+            ||> Seq.zip
+            |> Seq.iter (fun (kernelArg, valueArg) -> 
+                kernel.CompilerResult.SourceArgs 
+                |> Seq.iteri (fun i (sourceArg, gpuArray) -> 
+                    if sourceArg = kernelArg && gpuArray = Unchecked.defaultof<IGpuArray> then
+                         sourceArgs.[i] <- (sourceArg, valueArg :?> IGpuArray))
+
+                kernel.CompilerResult.ValueArgs
+                |> Seq.iteri (fun i (sourceArg, value) -> 
+                    if sourceArg = kernelArg && value = null then
+                         valueArgs.[i] <- (sourceArg, valueArg))
+                )
+            self.Fill(kernel.Kernel, kernel.Query, { kernel.CompilerResult with SourceArgs = sourceArgs; ValueArgs = valueArgs }, outputGpuArray)
+
+        /// <summary>
+        /// Runs the kernel and fills with data the output gpuArray.
+        /// </summary>
+        /// <param name="kernel">The query to run.</param>
+        /// <param name="outputGpuArray">The gpuArray to be filled.</param>
+        /// <param name="arg">Kernel argument.</param>
+        /// <returns>void</returns>            
+        member self.Fill<'Arg, 'Result>(kernel : GpuKernel<'Arg, IGpuArray<'Result>>, outputGpuArray : IGpuArray<'Result>, arg : 'Arg) : unit =
+            self.Fill(kernel, outputGpuArray, [|arg :> obj|])
+
+        /// <summary>
+        /// Runs the kernel and fills with data the output gpuArray.
+        /// </summary>
+        /// <param name="kernel">The kernel to run.</param>
+        /// <param name="arg1">Kernel argument1.</param>
+        /// <param name="arg2">Kernel argument2.</param>
+        /// <param name="arg3">Kernel argument2.</param>
+        /// <returns>void</returns>            
+        member self.Fill<'Arg1, 'Arg2, 'Arg3, 'Result> (kernel : GpuKernel<'Arg1, 'Arg2, 'Arg3, IGpuArray<'Result>>, outputGpuArray : IGpuArray<'Result>, arg1 : 'Arg1, arg2 : 'Arg2, arg3 : 'Arg3) : unit =
+            self.Fill(kernel :> IGpuKernel, outputGpuArray, [|arg1 :> obj; arg2 :> obj; arg3 :> obj|])
+                        
+        /// <summary>
+        /// Runs the kernel and fills with data the output gpuArray.
+        /// </summary>
+        /// <param name="kernel">The kernel to run.</param>
+        /// <param name="arg1">Kernel argument1.</param>
+        /// <param name="arg2">Kernel argument2.</param>
+        /// <returns>void</returns>            
+        member self.Fill<'Arg1, 'Arg2, 'Result> (kernel : GpuKernel<'Arg1, 'Arg2, IGpuArray<'Result>>, outputGpuArray : IGpuArray<'Result>, arg1 : 'Arg1, arg2 : 'Arg2) : unit =
+            self.Fill(kernel :> IGpuKernel, outputGpuArray, [|arg1 :> obj; arg2 :> obj|]) 
+
+        /// <summary>
+        /// Compiles a gpu query to gpu kernel code, runs the kernel and fills with data the output gpuArray.
+        /// </summary>
+        /// <param name="gpuQuery">The query to run.</param>
+        /// <param name="outputGpuArray">The gpuArray to be filled.</param>
+        /// <returns>void</returns>            
+        member self.Fill<'T>(gpuQuery : IGpuQueryExpr<IGpuArray<'T>>, outputGpuArray : IGpuArray<'T>) : unit =
+            let queryExpr = gpuQuery.Expr
+            let compilerResult = Compiler.compile queryExpr
+            let kernel = (createKernel compilerResult (fun kernel -> new GpuKernel(kernel, [||], queryExpr, compilerResult) :> _)).Kernel
+            self.Fill(kernel, queryExpr, compilerResult, outputGpuArray) 
 
 
         member private self.Run(kernel : Kernel, queryExpr : QueryExpr, compilerResult : Compiler.CompilerResult) : obj = 
@@ -409,7 +462,7 @@
             | reductionType -> failwithf "Invalid ReductionType %A" reductionType
 
 
-        member self.Run(kernel : IGpuKernel, args : obj[]) : obj = 
+        member private self.Run(kernel : IGpuKernel, args : obj[]) : obj = 
             let sourceArgs = Array.copy kernel.CompilerResult.SourceArgs
             let valueArgs = Array.copy kernel.CompilerResult.ValueArgs
             (kernel.Args, args)
@@ -426,7 +479,19 @@
                          valueArgs.[i] <- (sourceArg, valueArg))
                 )
             self.Run(kernel.Kernel, kernel.Query, { kernel.CompilerResult with SourceArgs = sourceArgs; ValueArgs = valueArgs })
-            
+
+
+        /// <summary>
+        /// Runs the kernel and returns the result.
+        /// </summary>
+        /// <param name="kernel">The kernel to run.</param>
+        /// <param name="arg1">Kernel argument1.</param>
+        /// <param name="arg2">Kernel argument2.</param>
+        /// <param name="arg3">Kernel argument2.</param>
+        /// <returns>The result of the kernel.</returns>
+        member self.Run<'Arg1, 'Arg2, 'Arg3, 'Result> (kernel : GpuKernel<'Arg1, 'Arg2, 'Arg3, 'Result>, arg1 : 'Arg1, arg2 : 'Arg2, arg3 : 'Arg3) : 'Result =
+            self.Run(kernel :> IGpuKernel, [|arg1 :> obj; arg2 :> obj; arg3 :> obj|]) :?> _
+                        
         /// <summary>
         /// Runs the kernel and returns the result.
         /// </summary>

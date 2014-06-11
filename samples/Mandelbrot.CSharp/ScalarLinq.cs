@@ -78,7 +78,7 @@ namespace Algorithms
         {
             Pair[] pairs = Enumerable.Range(0, 312).SelectMany(y => Enumerable.Range(0, 534).Select(x => new Pair { X = x, Y = y })).ToArray();
             int[] output = Enumerable.Range(0, pairs.Length).ToArray();
-            this.context = new GpuContext();
+            this.context = new GpuContext("*");
             this._pairs = context.CreateGpuArray(pairs);
             this._output = context.CreateGpuArray(output);
 
@@ -105,12 +105,25 @@ namespace Algorithms
                                                  .Count()
                          select iters).ToArray()
                     );
+            gpuKernel = 
+                context.Compile<float, float, float, IGpuArray<int>>(
+                    (_ymin, _xmin, _step) =>
+                         from pair in _pairs.AsGpuQueryExpr()
+                         let _y = _ymin + _step * pair.Y
+                         let _x = _xmin + _step * pair.X
+                         let c = new Complex { Real = _x, Img = _y }
+                         let iters = EnumerableEx.Generate(c, x => squareLength.Invoke(x) < limit,
+                                                  x => add.Invoke(mult.Invoke(x, x), c), x => x)
+                                                 .Take(max_iters)
+                                                 .Count()
+                         select iters);
         }
 
         protected const float limit = 4.0f;
 
         readonly Func<float, float, float, int[]> parFunc;
         readonly Func<float, float, float, int[]> seqFunc;
+        readonly GpuKernel<float, float, float, IGpuArray<int>> gpuKernel;
 
         public void RenderMultiThreadedWithLinq(float xmin, float xmax, float ymin, float ymax, float step)
         {
@@ -122,19 +135,7 @@ namespace Algorithms
         public void RenderWithGpuLinq(float xmin, float xmax, float ymin, float ymax, float step)
         {
 
-            var query =
-                 (from pair in _pairs.AsGpuQueryExpr()
-                  let _y = ymin + step * pair.Y
-                  let _x = xmin + step * pair.X
-                  let c = new Complex { Real = _x, Img = _y }
-                  let iters = EnumerableEx.Generate(c, x => squareLength.Invoke(x) < limit,
-                                           x => add.Invoke(mult.Invoke(x, x), c), x => x)
-                                          .Take(max_iters)
-                                          .Count()
-                  select iters);
-
-                
-            context.Fill(query, _output);
+            context.Fill(gpuKernel, _output, ymin, xmin, step);
             _output.Refresh();
             var array = _output.GetArray();
             DrawPixels(array);
