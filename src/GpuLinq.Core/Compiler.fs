@@ -58,6 +58,8 @@
                 Sum(toQueryExpr expr')
             | MethodCall (_, MethodName "ToArray" _, [expr']) ->
                 ToArray(toQueryExpr expr')
+            | MethodCall (_, MethodName "Zip" _, [expr; expr'; LambdaOrQuote ([_; _], bodyExpr, f')] ) ->
+                ZipWith (expr, expr, f')
             | MethodCall (_, MethodName "AsGpuQueryExpr" _, [expr']) ->
                 match expr'.Type with
                 | Named(typedef, [|elemType|]) when typedef = typedefof<IGpuArray<_>> -> 
@@ -425,21 +427,23 @@
                     let valueArgs = collectValueArgs (paramExprs, values) 
                     let (exprsStr, varsStr) = bodyStr exprs vars
                     let argsStr = argsToStr paramExprs vars
+                    let firstGpuArrayType = firstGpuArrayParamExpr.Type.GetGenericArguments().[0]
+                    let secondGpuArrayType = secondGpuArrayParamExpr.Type.GetGenericArguments().[0]
                     match context.ReductionType with
                     | ReductionType.Map ->
-                        let source = KernelTemplates.zip2Template headerStr (typeToStr firstGpuArray.Type) (typeToStr secondGpuArray.Type) argsStr resultTypeStr 
+                        let source = KernelTemplates.zip2Template headerStr (typeToStr firstGpuArrayType) (typeToStr secondGpuArrayType) argsStr resultTypeStr 
                                                                      varsStr (varExprToStr firstParamExpr vars) (varExprToStr secondParamExpr vars) 
                                                                      (varExprToStr context.CurrentVarExpr vars) (exprToStr bodyExpr vars)
                                                                      exprsStr (varExprToStr context.AccVarExpr vars)
                         { Source = source; SourceType = SourceType.Zip; ReductionType = context.ReductionType; SourceArgs = [| (firstGpuArrayParamExpr, firstGpuArray); (secondGpuArrayParamExpr, secondGpuArray) |]; ValueArgs = valueArgs  }
                     | ReductionType.Filter ->
-                        let source = KernelTemplates.zip2FilterTemplate headerStr (typeToStr firstGpuArray.Type) (typeToStr secondGpuArray.Type) argsStr resultTypeStr 
+                        let source = KernelTemplates.zip2FilterTemplate headerStr (typeToStr firstGpuArrayType) (typeToStr secondGpuArrayType) argsStr resultTypeStr 
                                                                             varsStr (varExprToStr firstParamExpr vars) (varExprToStr secondParamExpr vars) 
                                                                             (varExprToStr context.CurrentVarExpr vars) (exprToStr bodyExpr vars)
                                                                             exprsStr (varExprToStr context.FlagVarExpr vars) (varExprToStr context.AccVarExpr vars)
                         { Source = source; SourceType = SourceType.Zip; ReductionType = context.ReductionType; SourceArgs = [| (firstGpuArrayParamExpr, firstGpuArray); (secondGpuArrayParamExpr, secondGpuArray) |]; ValueArgs = valueArgs  }
                     | ReductionType.Sum | ReductionType.Count -> 
-                        let source = KernelTemplates.zip2ReduceTemplate headerStr (typeToStr firstGpuArray.Type) (typeToStr secondGpuArray.Type) argsStr resultTypeStr resultTypeStr 
+                        let source = KernelTemplates.zip2ReduceTemplate headerStr (typeToStr firstGpuArrayType) (typeToStr secondGpuArrayType) argsStr resultTypeStr resultTypeStr 
                                                                         varsStr (varExprToStr firstParamExpr vars) (varExprToStr secondParamExpr vars) 
                                                                         (varExprToStr context.CurrentVarExpr vars) (exprToStr bodyExpr vars) exprsStr (varExprToStr context.AccVarExpr vars) "0" "+"
                         { Source = source; SourceType = SourceType.Zip; ReductionType = context.ReductionType; SourceArgs = [| (firstGpuArrayParamExpr, firstGpuArray); (secondGpuArrayParamExpr, secondGpuArray) |]; ValueArgs = valueArgs  }
